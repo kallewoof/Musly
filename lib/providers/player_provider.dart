@@ -1746,6 +1746,9 @@ class PlayerProvider extends ChangeNotifier
               .catchError((e) {
             debugPrint('Scrobble flush failed: $e');
           });
+          _subsonicService.flushPendingStars().catchError((e) {
+            debugPrint('Star flush failed: $e');
+          });
         }
       }
 

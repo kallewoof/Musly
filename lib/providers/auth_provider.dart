@@ -92,6 +92,9 @@ class AuthProvider extends ChangeNotifier {
       offlineService.flushPendingScrobbles(_subsonicService).catchError(
             (e) => debugPrint('Error flushing pending scrobbles: $e'),
           );
+      _subsonicService.flushPendingStars().catchError(
+            (e) => debugPrint('Error flushing pending stars: $e'),
+          );
     } else {
       final offlineService = OfflineService();
       await offlineService.initialize();
@@ -216,6 +219,9 @@ class AuthProvider extends ChangeNotifier {
         await offlineService.initialize();
         offlineService.flushPendingScrobbles(_subsonicService).catchError(
               (e) => debugPrint('Error flushing pending scrobbles: $e'),
+            );
+        _subsonicService.flushPendingStars().catchError(
+              (e) => debugPrint('Error flushing pending stars: $e'),
             );
         return true;
       } else {

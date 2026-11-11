@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import 'client_identity.dart';
@@ -28,6 +29,16 @@ class PingResult {
     this.serverType,
     this.serverVersion,
   });
+}
+
+/// The request never reached the server (refused, unresolvable, or no connection within the timeout), so
+/// it cannot have been applied. Prints like the plain [Exception] it replaces.
+class ServerUnreachableException implements Exception {
+  const ServerUnreachableException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'Exception: $message';
 }
 
 class SubsonicService {
@@ -442,6 +453,8 @@ class SubsonicService {
     } on DioException catch (e) {
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
+          throw const ServerUnreachableException(
+              'Connection timed out. Check your server URL.');
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
           throw Exception('Connection timed out. Check your server URL.');
@@ -453,7 +466,7 @@ class SubsonicService {
             throw Exception(
                 'SSL certificate error. Enable "Allow Self-Signed Certificates" for custom CA servers.');
           }
-          throw Exception(
+          throw const ServerUnreachableException(
               'Cannot connect to server. Check the URL and your internet connection.');
         case DioExceptionType.badResponse:
           final status = e.response?.statusCode;
@@ -1041,7 +1054,7 @@ class SubsonicService {
     if (id != null) params['id'] = id;
     if (albumId != null) params['albumId'] = albumId;
     if (artistId != null) params['artistId'] = artistId;
-    await _request('star', params);
+    await _starOrQueue('star', params);
   }
 
   Future<void> unstar({String? id, String? albumId, String? artistId}) async {
@@ -1057,7 +1070,65 @@ class SubsonicService {
     if (id != null) params['id'] = id;
     if (albumId != null) params['albumId'] = albumId;
     if (artistId != null) params['artistId'] = artistId;
-    await _request('unstar', params);
+    await _starOrQueue('unstar', params);
+  }
+
+  static const _keyPendingStars = 'pending_stars';
+
+  /// Sends a star or unstar now or, when the server cannot be reached, keeps it for [flushPendingStars].
+  /// One pending action per item: the latest wins, and one that reaches the server clears the older one,
+  /// which would otherwise be replayed over it later.
+  Future<void> _starOrQueue(String op, Map<String, String> params) async {
+    final key = _starKey(params);
+    try {
+      await _request(op, params);
+      await _setPendingStar(key, null);
+    } on ServerUnreachableException {
+      await _setPendingStar(key, {'op': op, 'params': params});
+      debugPrint('[Subsonic] $op $key kept until the server is reachable');
+    }
+  }
+
+  /// Sends the stars and unstars made while the server was unreachable. Stops at the first one that still
+  /// cannot reach it; one the server refuses is dropped, loudly, since retrying cannot change the answer.
+  Future<void> flushPendingStars() async {
+    if (!isConfigured || _jellyfin != null || _youtube != null) return;
+    final pending = await _pendingStars();
+    for (final entry in pending.entries) {
+      final op = entry.value['op'] as String;
+      final params = Map<String, String>.from(entry.value['params'] as Map);
+      try {
+        await _request(op, params);
+      } on ServerUnreachableException {
+        return;
+      } catch (e) {
+        debugPrint('[Subsonic] pending $op ${entry.key} refused, dropped: $e');
+      }
+      await _setPendingStar(entry.key, null);
+    }
+  }
+
+  static String _starKey(Map<String, String> params) =>
+      (params.entries.map((e) => '${e.key}=${e.value}').toList()..sort())
+          .join('&');
+
+  Future<Map<String, Map<String, dynamic>>> _pendingStars() async {
+    final raw =
+        (await SharedPreferences.getInstance()).getString(_keyPendingStars);
+    if (raw == null) return {};
+    return (json.decode(raw) as Map<String, dynamic>)
+        .map((k, v) => MapEntry(k, v as Map<String, dynamic>));
+  }
+
+  Future<void> _setPendingStar(String key, Map<String, dynamic>? value) async {
+    final pending = await _pendingStars();
+    if (value == null) {
+      if (pending.remove(key) == null) return;
+    } else {
+      pending[key] = value;
+    }
+    await (await SharedPreferences.getInstance())
+        .setString(_keyPendingStars, json.encode(pending));
   }
 
   Future<void> setRating(String id, int rating) async {
