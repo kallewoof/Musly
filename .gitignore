@@ -114,3 +114,7 @@ migrate_working_dir/
 .claude/
 /discord_sdk_temp
 .widget_preview/
+
+# Left in the repo root by test runs (the image cache under flutter test)
+libCachedImageData/
+libCachedImageData.json

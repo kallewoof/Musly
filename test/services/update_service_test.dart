@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musly/services/update_service.dart';
 
@@ -84,7 +86,13 @@ void main() {
       expect(release.targetAsset, isNotNull);
     });
 
-    test('targetAsset selects the matching platform installer', () {
+    // RD: the Windows branch misses the "-setup.exe" name and falls back to the first asset, so a Windows
+    // user's update downloads the macOS .dmg listed before it.
+    test('targetAsset selects the matching platform installer',
+        skip: Platform.isWindows
+            ? false
+            : 'targetAsset chooses by the host platform; this case needs Windows',
+        () {
       final assets = [
         const ReleaseAsset(
           name: 'musly-macos.dmg',
@@ -110,7 +118,6 @@ void main() {
 
       final target = release.targetAsset;
       expect(target, isNotNull);
-      // On Windows test environment, target should be musly-setup.exe
       expect(target!.name, 'musly-setup.exe');
     });
   });

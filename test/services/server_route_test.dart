@@ -12,9 +12,7 @@ import 'package:musly/services/subsonic_service.dart';
 
 /// A server on loopback. [subsonic] false makes it answer like a captive portal: 200 with an HTML page.
 class _Server {
-  _Server({this.subsonic = true});
-
-  bool subsonic;
+  bool subsonic = true;
   Duration delay = Duration.zero;
   late HttpServer _server;
   int requests = 0;
