@@ -528,6 +528,16 @@ class StorageService {
     return salt;
   }
 
+  Future<String> getOrCreateInstallId() async {
+    final prefs = await _prefs;
+    String? id = prefs.getString('install_id');
+    if (id == null || id.isEmpty) {
+      id = const Uuid().v4().substring(0, 8);
+      await prefs.setString('install_id', id);
+    }
+    return id;
+  }
+
   Future<void> saveLastSelectedFamily(String family) async {
     final prefs = await _prefs;
     await prefs.setString('last_selected_server_family', family);

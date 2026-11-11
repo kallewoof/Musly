@@ -88,7 +88,8 @@ class OfflineService {
   static const String _keyParallelDownloads = 'parallel_downloads_count';
   static const String _keyKeepScreenOn = 'offline_keep_screen_on';
   static const String _keyCustomDownloadPath = 'offline_custom_download_path';
-  static const String _keyAutoDownloadFavorites = 'offline_auto_download_favorites';
+  static const String _keyAutoDownloadFavorites =
+      'offline_auto_download_favorites';
 
   static const int _defaultParallelDownloads = 3;
   static const int _maxParallelDownloads = 5;
@@ -464,6 +465,8 @@ class OfflineService {
       await dio.download(
         url,
         filePath,
+        options: Options(
+            headers: {'User-Agent': subsonicService.identity.userAgent}),
         onReceiveProgress: (received, total) {
           if (total > 0 && onProgress != null) {
             onProgress(received / total);
@@ -489,7 +492,12 @@ class OfflineService {
           if (coverUrl.isNotEmpty) {
             final dioCover = Dio();
             final songCoverPath = _getCoverArtPath(song.id);
-            await dioCover.download(coverUrl, songCoverPath);
+            await dioCover.download(
+              coverUrl,
+              songCoverPath,
+              options: Options(
+                  headers: {'User-Agent': subsonicService.identity.userAgent}),
+            );
 
             final artIdPath = _getCoverArtByArtIdPath(song.coverArt!);
             if (!File(artIdPath).existsSync()) {
@@ -575,7 +583,8 @@ class OfflineService {
     await _prefs?.setBool(_keyAutoDownloadFavorites, value);
   }
 
-  Future<void> autoDownloadIfEnabled(Song song, SubsonicService subsonicService, dynamic libraryProvider) async {
+  Future<void> autoDownloadIfEnabled(Song song, SubsonicService subsonicService,
+      dynamic libraryProvider) async {
     if (getAutoDownloadFavorites()) {
       if (libraryProvider != null) {
         libraryProvider.cacheSongLocally(song);

@@ -7,11 +7,13 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
+import 'client_identity.dart';
 import 'jellyfin_service.dart';
 import 'youtube_service.dart';
 import 'storage_service.dart';
 import 'lrclib_service.dart';
 import 'library_database_service.dart';
+import 'update_service.dart';
 import 'ytdlp_service.dart';
 
 class PingResult {
@@ -34,13 +36,22 @@ class SubsonicService {
   JellyfinService? _jellyfin;
   YoutubeService? _youtube;
 
-  static const String _clientName = 'Musly';
   static const String _apiVersion = '1.16.1';
 
+  ClientIdentity _identity = ClientIdentity.anonymous;
+  ClientIdentity get identity => _identity;
+
   SubsonicService() : _dio = Dio() {
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
-    _addLogInterceptor(_dio);
+    _dio = _newDio();
+  }
+
+  Dio _newDio() {
+    final dio = Dio();
+    dio.options.connectTimeout = const Duration(seconds: 30);
+    dio.options.receiveTimeout = const Duration(seconds: 30);
+    dio.options.headers['User-Agent'] = _identity.userAgent;
+    _addLogInterceptor(dio);
+    return dio;
   }
 
   static String _sanitizeUrl(String url) {
@@ -101,6 +112,10 @@ class SubsonicService {
 
   Future<void> configure(ServerConfig config) async {
     _config = config;
+    _identity = ClientIdentity.forInstall(
+      installId: await StorageService().getOrCreateInstallId(),
+      version: UpdateService.currentVersion,
+    );
     _activeBaseUrl = config.normalizedUrl;
     if (config.isJellyfin) {
       _jellyfin ??= JellyfinService();
@@ -173,10 +188,7 @@ class SubsonicService {
     String? clientCertPath,
     String? clientCertPassword,
   }) async {
-    _dio = Dio();
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
-    _addLogInterceptor(_dio);
+    _dio = _newDio();
 
     final hasCustomServerCert =
         customCertPath != null && customCertPath.isNotEmpty;
@@ -302,7 +314,7 @@ class SubsonicService {
     final params = <String, String>{
       'u': _config!.username,
       'v': _apiVersion,
-      'c': _clientName,
+      'c': _identity.clientName,
       'f': 'json',
     };
 
@@ -329,7 +341,7 @@ class SubsonicService {
     final params = <String, String>{
       'u': _config!.username,
       'v': _apiVersion,
-      'c': _clientName,
+      'c': _identity.clientName,
       'f': 'json',
     };
 
