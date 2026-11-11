@@ -118,3 +118,5 @@ migrate_working_dir/
 # Left in the repo root by test runs (the image cache under flutter test)
 libCachedImageData/
 libCachedImageData.json
+# Generated and deleted by tool/coverage.sh; ignored in case a run is killed first
+test/_coverage_all_files_test.dart

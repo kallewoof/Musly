@@ -1,5 +1,6 @@
 #!/bin/sh
-# pre-commit: analyze, then run the whole test suite, when the commit touches Dart code or its configuration.
+# pre-commit: analyze, the unit tests under the coverage floor (tool/coverage.sh), then the live-server
+# tests, when the commit touches Dart code, its configuration or the coverage gate.
 # Enable once per clone: git config core.hooksPath .githooks
 #
 # It tests the working tree, not only what is staged. Formatting is not checked: upstream is not consistently
@@ -9,7 +10,8 @@ set -eu
 cd "$(git rev-parse --show-toplevel)"
 
 git diff --cached --name-only |
-  grep -qE '^(lib|test)/|^pubspec\.(yaml|lock)$|^analysis_options\.yaml$|^l10n\.yaml$' || exit 0
+  grep -qE '^(lib|test)/|^pubspec\.(yaml|lock)$|^analysis_options\.yaml$|^l10n\.yaml$|^coverage_floor\.txt$|^tool/coverage\.sh$' ||
+  exit 0
 
 # git exports GIT_DIR and friends to hooks. The Flutter SDK is a git checkout that reads its own version
 # with git, so under them it reports 0.0.0-unknown and every pub resolution fails.
@@ -24,12 +26,14 @@ fail() {
 echo "pre-commit: flutter analyze"
 flutter analyze --no-fatal-infos || fail "flutter analyze reported a warning or an error"
 
-# Persisted, then summarised: a filtered stream can hide the line that says what failed.
+tool/coverage.sh || fail "unit tests or coverage (tool/coverage.sh)"
+
+# Skipped unless test_server_config.json (gitignored) names a server: see test/test_config.dart.
 log="$(mktemp -t musly-pre-commit.XXXXXX)"
-echo "pre-commit: flutter test (log: $log)"
-if ! flutter test --reporter expanded >"$log" 2>&1; then
+echo "pre-commit: live-server tests (log: $log)"
+if ! flutter test --reporter expanded test/integration >"$log" 2>&1; then
   sed -n '/^Failing tests:/,$p' "$log"
-  fail "flutter test; the full output is in $log"
+  fail "live-server tests; the full output is in $log"
 fi
 grep -E '^[0-9]+:[0-9]+ \+[0-9]+' "$log" | tail -1
 rm -f "$log"
