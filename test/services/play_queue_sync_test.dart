@@ -82,6 +82,73 @@ void main() {
     });
   });
 
+  group('stale and unsupported', () {
+    // RD: a queue that cannot be pushed leaves the older pending change in place, which is sent later
+    // although this device has moved on (cleared its queue, or plays a local file).
+    test('an unpushable change discards the older pending one', () async {
+      sync.markChanged([_song('a')], 0, const Duration(seconds: 5));
+      sync.markChanged([], -1, Duration.zero);
+      await sync.flush();
+
+      expect(server.saves, isEmpty);
+      expect(sync.hasUnsentChange, isFalse);
+    });
+
+    // RD: a laptop that paused offline overwrites, on reconnecting, the queue the phone saved since.
+    test('a change that waited is dropped when another device saved after it',
+        () async {
+      server.failSaves = true;
+      sync.markChanged([_song('mine')], 0, const Duration(seconds: 5));
+      await sync.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      server.saveFromOtherDevice('Musly-ios-other', ['theirs'], 0, 1000);
+      server.failSaves = false;
+
+      await sync.flush();
+
+      expect(server.saves, isEmpty);
+      expect(sync.hasUnsentChange, isFalse);
+      expect((await sync.takeForeign())!.songs.single.id, 'theirs');
+    });
+
+    // RD: the staleness check drops every change that waited once any other device has ever saved, so
+    // progress made offline never reaches the server.
+    test('a change that waited is still sent when the other save is older',
+        () async {
+      server.saveFromOtherDevice('Musly-ios-other', ['theirs'], 0, 1000);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      server.failSaves = true;
+      sync.markChanged([_song('mine')], 0, const Duration(seconds: 5));
+      await sync.flush();
+      server.failSaves = false;
+
+      await sync.flush();
+
+      expect(server.saves.single['id'], ['mine']);
+    });
+
+    // RD: every push to a server without the index-based queue fails and stays pending, and each press of
+    // play waits on a request that cannot succeed.
+    test('a server without the index-based queue is left alone', () async {
+      server.indexBasedQueue = false;
+      final fresh = SubsonicService();
+      await fresh.configure(ServerConfig(
+          serverUrl: 'http://127.0.0.1:${server.port}',
+          username: 'u',
+          password: 'p'));
+      sync = PlayQueueSync(fresh);
+      server.saveFromOtherDevice('Musly-ios-other', ['theirs'], 0, 1000);
+      final getsBefore = server.gets;
+
+      sync.markChanged([_song('mine')], 0, const Duration(seconds: 5));
+      await sync.flush();
+
+      expect(server.saves, isEmpty);
+      expect(await sync.takeForeign(), isNull);
+      expect(server.gets, getsBefore);
+    });
+  });
+
   group('takeForeign', () {
     // RD: the remote queue is parsed with the wrong index or position, so the device resumes on another
     // song or from the start instead of where the phone stopped.

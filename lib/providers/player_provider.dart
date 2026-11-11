@@ -320,12 +320,18 @@ class PlayerProvider extends ChangeNotifier
   /// A loaded source has the previous server address baked into its URLs. While paused it is dropped, so
   /// the next play() rebuilds it for the new route at the same position. While playing it is left alone.
   void _onRouteChanged() {
-    if (_isPlaying || _audioPlayer.audioSource == null) return;
+    if (_isPlaying || _isLoading || _audioPlayer.audioSource == null) return;
     final keep = _position;
+    final songId = _currentSong?.id;
     _concatenatingSource = null;
-    unawaited(
-        _audioPlayer.stop().then((_) => _position = keep, onError: (_) {}));
+    unawaited(_audioPlayer.stop().then((_) {
+      if (_currentSong?.id == songId) _position = keep;
+    }, onError: (_) {}));
   }
+
+  /// Tests have no audio backend, so nothing else can put the player in the playing state.
+  @visibleForTesting
+  void debugSetPlaying(bool playing) => _isPlaying = playing;
 
   void _markQueueChanged() {
     if (_isPlayingRadio || _jukeboxService.enabled) return;
@@ -335,13 +341,23 @@ class PlayerProvider extends ChangeNotifier
   /// Adopts the play queue another device left on the server, so pressing play here continues where
   /// that device stopped. [PlayQueueSync.takeForeign] decides whether there is one to adopt.
   Future<bool> adoptRemoteQueue() async {
-    if (_jukeboxService.enabled || _isRenderingRemotely || _isPlayingRadio) {
+    if (_jukeboxService.enabled ||
+        _isRenderingRemotely ||
+        _isPlayingRadio ||
+        _offlineService.isOfflineMode) {
       return false;
     }
     final remote = await _queueSync
         .takeForeign()
-        .timeout(const Duration(seconds: 3), onTimeout: () => null);
-    if (remote == null || _isPlaying) return false;
+        .timeout(const Duration(seconds: 2), onTimeout: () => null);
+    // The user may have acted while the server was asked: a pick, a load or any change of their own
+    // wins over the other device's queue.
+    if (remote == null ||
+        _isPlaying ||
+        _isLoading ||
+        _queueSync.hasUnsentChange) {
+      return false;
+    }
 
     // Left the way a launch restore leaves it: no source, so play() loads the track at _position.
     // Stopped first, so the stop's own position report cannot land on the adopted position.
@@ -357,6 +373,7 @@ class PlayerProvider extends ChangeNotifier
         ? Duration(seconds: seconds)
         : Duration.zero;
     _concatenatingSource = null;
+    _resetScrobbleTracking(_currentSong!);
     await _saveQueueStateImmediate();
     await _queueSync.adopted(remote);
     notifyListeners();
@@ -1144,6 +1161,8 @@ class PlayerProvider extends ChangeNotifier
       notifyListeners();
       await _applyReplayGain(_currentSong);
     }
+    _markQueueChanged();
+    unawaited(_queueSync.flush());
   }
 
   Future<void> _fadeInAndResume() async {
@@ -1426,7 +1445,7 @@ class PlayerProvider extends ChangeNotifier
         await seek(initialPosition);
       }
       if (!_isPlaying) {
-        await play();
+        await play(adoptRemote: false);
       }
       return;
     }
@@ -1843,8 +1862,11 @@ class PlayerProvider extends ChangeNotifier
   }
 
   @override
-  Future<void> play() async {
-    if (!_isPlaying) await adoptRemoteQueue();
+
+  /// [adoptRemote] false resumes this device's own queue whatever another device saved: for a song the
+  /// user just picked.
+  Future<void> play({bool adoptRemote = true}) async {
+    if (adoptRemote && !_isPlaying) await adoptRemoteQueue();
     _isManuallyPaused = false;
     _wasPlayingBeforeInterruption = false;
 
@@ -1904,6 +1926,7 @@ class PlayerProvider extends ChangeNotifier
   }
 
   Future<void> pause() async {
+    final wasPlaying = _isPlaying;
     _isManuallyPaused = true;
     _wasPlayingBeforeInterruption = false;
 
@@ -1929,8 +1952,12 @@ class PlayerProvider extends ChangeNotifier
       await _audioPlayer.pause();
     }
 
-    _markQueueChanged();
-    unawaited(_queueSync.flush());
+    // Only a pause that stopped something is a change: a media key on a device that merely restored its
+    // queue must not push that queue over another device's.
+    if (wasPlaying) {
+      _markQueueChanged();
+      unawaited(_queueSync.flush());
+    }
   }
 
   Future<void> pauseLocal() async {
@@ -1942,6 +1969,11 @@ class PlayerProvider extends ChangeNotifier
   }
 
   Future<void> stop() async {
+    if (_isPlaying) {
+      // Pushed before the position is reset: where it stopped is where another device should resume.
+      _markQueueChanged();
+      unawaited(_queueSync.flush());
+    }
     if (_castService.isConnected) {
       await _castService.stop();
     } else if (_upnpService.isConnected) {

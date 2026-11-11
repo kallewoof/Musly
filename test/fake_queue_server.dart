@@ -6,6 +6,13 @@ class FakeQueueServer {
   late HttpServer _server;
   final saves = <Map<String, List<String>>>[];
   bool failSaves = false;
+
+  /// Off for a server without the OpenSubsonic index-based queue (gonic, older Navidrome).
+  bool indexBasedQueue = true;
+
+  /// Delays the queue lookup, to let a test act while a device waits for the server.
+  Duration getDelay = Duration.zero;
+  int gets = 0;
   Map<String, dynamic>? queue;
   var _clock = 0;
 
@@ -27,7 +34,10 @@ class FakeQueueServer {
       ],
       'currentIndex': index,
       'position': positionMs,
-      'changed': 'stamp-${++_clock}',
+      'changed': DateTime.now()
+          .toUtc()
+          .add(Duration(microseconds: ++_clock))
+          .toIso8601String(),
       'changedBy': client,
     };
   }
@@ -63,7 +73,17 @@ class FakeQueueServer {
             int.parse(params['currentIndex']!.single),
             int.parse(params['position']!.single));
       }
+    } else if (req.uri.path.endsWith('/getOpenSubsonicExtensions')) {
+      response['openSubsonicExtensions'] = [
+        if (indexBasedQueue)
+          {
+            'name': 'indexBasedQueue',
+            'versions': [1]
+          },
+      ];
     } else if (req.uri.path.endsWith('/getPlayQueueByIndex')) {
+      gets++;
+      await Future<void>.delayed(getDelay);
       response['playQueueByIndex'] = queue ?? {'username': 'u'};
     }
     req.response

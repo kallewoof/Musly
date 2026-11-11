@@ -13,7 +13,12 @@ import 'subsonic_service.dart';
 ///   another device left;
 /// - a remote queue is offered ([takeForeign]) only when another install saved it and this install has
 ///   not yet adopted that save (the server's `changed` stamp, compared for equality only); and
-/// - while a local change is still unsent, this device's queue is the newer one: it is pushed instead.
+/// - while a local change is still unsent, this device's queue is the newer one: it is pushed instead;
+/// - except that a change whose push already failed once is dropped if another install saved after it
+///   was made. That compares the server's clock with this device's, so it is used only for a change that
+///   waited (offline), where the gap is minutes or hours rather than the clocks' skew.
+///
+/// Servers without the OpenSubsonic `indexBasedQueue` extension are left alone.
 class PlayQueueSync {
   PlayQueueSync(this._service);
 
@@ -24,30 +29,38 @@ class PlayQueueSync {
   _Snapshot? _pending;
   Future<void>? _inFlight;
 
-  bool get _available =>
-      _service.isConfigured && !_service.isJellyfin && !_service.isYoutube;
+  Future<bool> _available() async =>
+      _service.isConfigured &&
+      !_service.isJellyfin &&
+      !_service.isYoutube &&
+      (await _service.openSubsonicExtensions()).contains('indexBasedQueue');
 
   bool get hasUnsentChange => _pending != null;
 
   /// Records this device's queue as changed. Nothing is sent until [flush]: the caller decides when a
-  /// change is worth a request (pause, backgrounding, a periodic tick).
+  /// change is worth a request (pause, backgrounding, a periodic tick). A queue that cannot be pushed
+  /// (empty, or playing a local file) discards the older pending change rather than leaving it to be sent.
   void markChanged(List<Song> queue, int currentIndex, Duration position) {
-    final snapshot = _Snapshot.of(queue, currentIndex, position);
-    if (snapshot == null) return;
-    _pending = snapshot;
+    _pending = _Snapshot.of(queue, currentIndex, position);
   }
 
   /// Pushes the unsent change, if any, now. A failed push stays pending for the next attempt.
   Future<void> flush() async {
     await _inFlight;
     final snapshot = _pending;
-    if (snapshot == null || !_available) return;
+    if (snapshot == null || !await _available()) return;
     _inFlight = () async {
       try {
-        await _service.savePlayQueue(
-            snapshot.songIds, snapshot.currentIndex, snapshot.position);
+        if (snapshot.failed && await _savedElsewhereSince(snapshot)) {
+          debugPrint(
+              '[PlayQueueSync] another device saved since; change dropped');
+        } else {
+          await _service.savePlayQueue(
+              snapshot.songIds, snapshot.currentIndex, snapshot.position);
+        }
         if (identical(_pending, snapshot)) _pending = null;
       } catch (e) {
+        snapshot.failed = true;
         debugPrint('[PlayQueueSync] push failed, kept pending: $e');
       }
     }();
@@ -56,8 +69,17 @@ class PlayQueueSync {
 
   /// The server's queue, when another install saved it after this install last adopted one. Call
   /// [adopted] once it is applied; until then the same queue is offered again.
+  Future<bool> _savedElsewhereSince(_Snapshot snapshot) async {
+    final remote = await _service.getPlayQueue();
+    if (remote == null || remote.changedBy == _service.identity.clientName) {
+      return false;
+    }
+    final changed = DateTime.tryParse(remote.changed);
+    return changed != null && changed.isAfter(snapshot.madeAt);
+  }
+
   Future<RemotePlayQueue?> takeForeign() async {
-    if (!_available) return null;
+    if (!await _available()) return null;
     if (_pending != null) {
       await flush();
       return null;
@@ -83,11 +105,14 @@ class PlayQueueSync {
 }
 
 class _Snapshot {
-  const _Snapshot(this.songIds, this.currentIndex, this.position);
+  _Snapshot(this.songIds, this.currentIndex, this.position)
+      : madeAt = DateTime.now();
 
   final List<String> songIds;
   final int currentIndex;
   final Duration position;
+  final DateTime madeAt;
+  bool failed = false;
 
   /// Only server songs can be named to the server; local files are dropped and the index follows the
   /// current song. Null when nothing can be pushed: an empty queue, or a current song that is local.

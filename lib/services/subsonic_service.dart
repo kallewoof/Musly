@@ -143,13 +143,18 @@ class SubsonicService {
         config.serverFamily == 'youtube') {
       return;
     }
+    final check = ++_routeCheck;
     final lan = config.normalizedLanUrl;
     final next = lan != null && await _answersAsSubsonic(lan)
         ? lan
         : config.normalizedUrl;
+    // A newer check, or another server configured meanwhile, owns the route now.
+    if (check != _routeCheck || !identical(config, _config)) return;
     if (next != _activeBaseUrl) debugPrint('[Subsonic] Route: $next');
     _setRoute(next);
   }
+
+  int _routeCheck = 0;
 
   /// A 200 alone is not enough: a captive portal on a private address answers every request with one.
   Future<bool> _answersAsSubsonic(String baseUrl) async {
@@ -172,6 +177,7 @@ class SubsonicService {
 
   Future<void> configure(ServerConfig config) async {
     _config = config;
+    _extensions = null;
     _identity = ClientIdentity.forInstall(
       installId: await StorageService().getOrCreateInstallId(),
       version: UpdateService.currentVersion,
@@ -476,6 +482,11 @@ class SubsonicService {
           if (status == 404) {
             throw Exception('Server not found. Check your URL path.');
           }
+          if (status == 502 || status == 503 || status == 504) {
+            // A proxy (Cloudflare, nginx) answering for a server it cannot reach.
+            throw ServerUnreachableException(
+                'Server unavailable ($status). Try again shortly.');
+          }
           if (status != null && status >= 500) {
             throw Exception(
                 'Server error ($status). The server failed to process the request.');
@@ -513,6 +524,24 @@ class SubsonicService {
       throw Exception(body?['subsonic-response']?['error']?['message'] ??
           'savePlayQueue failed');
     }
+  }
+
+  Future<Set<String>>? _extensions;
+
+  /// The server's OpenSubsonic extensions, fetched once per configured server. Empty for a server that
+  /// does not implement OpenSubsonic, or when the lookup fails (it is retried on the next call).
+  Future<Set<String>> openSubsonicExtensions() {
+    return _extensions ??= () async {
+      try {
+        final response = await _request('getOpenSubsonicExtensions');
+        final list = response['openSubsonicExtensions'] as List<dynamic>? ?? [];
+        return {for (final e in list) (e as Map)['name'] as String};
+      } catch (e) {
+        _extensions = null;
+        debugPrint('[Subsonic] getOpenSubsonicExtensions failed: $e');
+        return <String>{};
+      }
+    }();
   }
 
   Future<RemotePlayQueue?> getPlayQueue() async {
@@ -1078,7 +1107,10 @@ class SubsonicService {
   /// Sends a star or unstar now or, when the server cannot be reached, keeps it for [flushPendingStars].
   /// One pending action per item: the latest wins, and one that reaches the server clears the older one,
   /// which would otherwise be replayed over it later.
-  Future<void> _starOrQueue(String op, Map<String, String> params) async {
+  Future<void> _starOrQueue(String op, Map<String, String> params) =>
+      _serializeStars(() => _starOrQueueNow(op, params));
+
+  Future<void> _starOrQueueNow(String op, Map<String, String> params) async {
     final key = _starKey(params);
     try {
       await _request(op, params);
@@ -1091,7 +1123,19 @@ class SubsonicService {
 
   /// Sends the stars and unstars made while the server was unreachable. Stops at the first one that still
   /// cannot reach it; one the server refuses is dropped, loudly, since retrying cannot change the answer.
-  Future<void> flushPendingStars() async {
+  Future<void> flushPendingStars() => _serializeStars(_flushPendingStarsNow);
+
+  /// Star actions and flushes run one at a time: interleaved, a flush could replay an action the user has
+  /// just reversed, or a read-modify-write of the pending map could lose the other's entry.
+  Future<void> _serializeStars(Future<void> Function() action) {
+    final run = _starChain.then((_) => action());
+    _starChain = run.catchError((_) {});
+    return run;
+  }
+
+  Future<void> _starChain = Future.value();
+
+  Future<void> _flushPendingStarsNow() async {
     if (!isConfigured || _jellyfin != null || _youtube != null) return;
     final pending = await _pendingStars();
     for (final entry in pending.entries) {

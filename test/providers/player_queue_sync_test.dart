@@ -113,12 +113,81 @@ void main() {
     player = await playerWith({});
     player.queue.addAll([song('a'), song('b')]);
     await player.adoptTrackAt(1);
+    player.debugSetPlaying(true);
 
     runZonedGuarded(() => unawaited(player.pause()), (_, __) {});
     await settle();
 
     expect(server.saves, isNotEmpty);
     expect(server.saves.last['currentIndex'], ['1']);
+  });
+
+  // RD: after the server answers, adoption re-checks only whether music is playing, so a song the user
+  // picked while it waited is replaced by the other device's queue.
+  test('a song picked while the server is asked is not replaced', () async {
+    player = await playerWith({});
+    server.saveFromOtherDevice('Musly-ios-other', ['a', 'b'], 1, 30000);
+    server.getDelay = const Duration(milliseconds: 300);
+
+    final adopting = player.adoptRemoteQueue();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    runZonedGuarded(
+        () =>
+            unawaited(player.playSong(song('mine'), playlist: [song('mine')])),
+        (_, __) {});
+
+    expect(await adopting, isFalse);
+    expect(player.currentSong?.id, 'mine');
+  });
+
+  // RD: tapping the paused current song resumes through play(), which adopts the other device's queue,
+  // so the song the user explicitly picked is not the one that plays.
+  test('tapping the paused current song does not adopt', () async {
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+    // Sent first, so the other device's save below is the newer one and adoption is on the table.
+    player.didChangeAppLifecycleState(AppLifecycleState.paused);
+    await settle();
+    server.saveFromOtherDevice('Musly-ios-other', ['x'], 0, 30000);
+
+    runZonedGuarded(() => unawaited(player.playSong(song('b'))), (_, __) {});
+    await settle();
+
+    expect(player.currentSong?.id, 'b');
+    expect(player.queue.map((s) => s.id), ['a', 'b']);
+  });
+
+  // RD: pause marks the queue whether or not anything played, so a media key on a device that only
+  // restored its queue pushes that queue over the one the phone left.
+  test('pausing a player that was not playing pushes nothing', () async {
+    player = await playerWith({
+      'persistent_queue': jsonEncode([song('old').toJson()]),
+      'persistent_queue_index': 0,
+      'persistent_queue_song_id': 'old',
+      'persistent_queue_position_ms': 5000,
+    });
+
+    runZonedGuarded(() => unawaited(player.pause()), (_, __) {});
+    await settle();
+
+    expect(server.saves, isEmpty);
+  });
+
+  // RD: stop resets the position before the queue is marked, so another device resumes the track from
+  // the start instead of where it stopped.
+  test('stop pushes the position it stopped at', () async {
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+    await player.seek(const Duration(seconds: 42));
+    player.debugSetPlaying(true);
+
+    runZonedGuarded(() => unawaited(player.stop()), (_, __) {});
+    await settle();
+
+    expect(server.saves, isNotEmpty);
+    expect(server.saves.last['position'], ['42000']);
   });
 
   // RD: the lifecycle handler marks the queue restored at launch as changed, so a device opened but never

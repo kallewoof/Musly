@@ -15,6 +15,7 @@ class _Server {
   _Server({this.subsonic = true});
 
   bool subsonic;
+  Duration delay = Duration.zero;
   late HttpServer _server;
   int requests = 0;
 
@@ -22,8 +23,9 @@ class _Server {
 
   Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _server.listen((req) {
+    _server.listen((req) async {
       requests++;
+      await Future<void>.delayed(delay);
       if (subsonic) {
         req.response
           ..headers.contentType = ContentType.json
@@ -98,6 +100,24 @@ void main() {
 
     expect(service.activeBaseUrl, wan.url);
     expect(wan.requests, greaterThan(0));
+  });
+
+  // RD: a slow LAN check for the previous server finishes after a switch to another server and points the
+  // new server's requests at the old address.
+  test('a route check finished after a server switch does not redirect it',
+      () async {
+    await configure();
+    lan.delay = const Duration(milliseconds: 300);
+    final staleCheck = service.refreshRoute();
+
+    final other = _Server();
+    await other.start();
+    await service.configure(
+        ServerConfig(serverUrl: other.url, username: 'u', password: 'p'));
+    await staleCheck;
+
+    expect(service.activeBaseUrl, other.url);
+    await other.stop();
   });
 
   group('ServerRouteWatcher', () {
