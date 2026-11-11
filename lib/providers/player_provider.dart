@@ -28,6 +28,7 @@ import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import '../services/upnp_service.dart';
 import '../services/latest_value_writer.dart';
 import '../services/jukebox_service.dart';
+import '../services/play_queue_sync.dart';
 import '../services/audio_handler.dart';
 import '../services/fade_settings_service.dart';
 import '../services/crossfade_service.dart';
@@ -40,7 +41,9 @@ import '../services/android_auto_service.dart';
 
 enum RepeatMode { off, all, one }
 
-class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implements AndroidAutoDelegate {
+class PlayerProvider extends ChangeNotifier
+    with WidgetsBindingObserver
+    implements AndroidAutoDelegate {
   final SubsonicService _subsonicService;
   late final StorageService _storageService;
   final MuslyAudioHandler _audioHandler;
@@ -63,7 +66,8 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   bool _isPlaying = false;
   bool _isLoading = false;
   bool _shuffleEnabled = false;
-  bool _gaplessEnabled = Platform.operatingSystem != 'tizen' && Platform.environment['TIZEN_API_VERSION'] == null;
+  bool _gaplessEnabled = Platform.operatingSystem != 'tizen' &&
+      Platform.environment['TIZEN_API_VERSION'] == null;
   final List<String> _shuffleHistory = [];
   RepeatMode _repeatMode = RepeatMode.off;
   Duration _position = Duration.zero;
@@ -127,6 +131,9 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   static const String _keyQueueSongId = 'persistent_queue_song_id';
   static const String _keyQueuePosition = 'persistent_queue_position_ms';
 
+  late final PlayQueueSync _queueSync = PlayQueueSync(_subsonicService);
+  Timer? _queueSyncTimer;
+
   final bool _reactivatingSession = false;
 
   Timer? _sleepTimer;
@@ -187,6 +194,11 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
     _restoreQueueState();
 
+    _queueSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_isPlaying) _markQueueChanged();
+      unawaited(_queueSync.flush());
+    });
+
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -197,6 +209,9 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       debugPrint(
           '[Player] App lifecycle state: $state - saving queue state immediately');
       _saveQueueStateImmediate();
+      unawaited(_queueSync.flush());
+    } else if (state == AppLifecycleState.resumed && !_isPlaying) {
+      unawaited(adoptRemoteQueue());
     }
   }
 
@@ -230,6 +245,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   }
 
   void _saveQueueState() {
+    _markQueueChanged();
     _persistDebounceTimer?.cancel();
     _persistDebounceTimer = Timer(const Duration(milliseconds: 200), () async {
       await _saveQueueStateImmediate();
@@ -298,6 +314,43 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
     } catch (e) {
       debugPrint('Error restoring queue state: $e');
     }
+  }
+
+  void _markQueueChanged() {
+    if (_isPlayingRadio || _jukeboxService.enabled) return;
+    _queueSync.markChanged(_queue, _currentIndex, _position);
+  }
+
+  /// Adopts the play queue another device left on the server, so pressing play here continues where
+  /// that device stopped. [PlayQueueSync.takeForeign] decides whether there is one to adopt.
+  Future<bool> adoptRemoteQueue() async {
+    if (_jukeboxService.enabled || _isRenderingRemotely || _isPlayingRadio) {
+      return false;
+    }
+    final remote = await _queueSync
+        .takeForeign()
+        .timeout(const Duration(seconds: 3), onTimeout: () => null);
+    if (remote == null || _isPlaying) return false;
+
+    // Left the way a launch restore leaves it: no source, so play() loads the track at _position.
+    // Stopped first, so the stop's own position report cannot land on the adopted position.
+    try {
+      await _audioPlayer.stop();
+    } catch (_) {}
+    _queue = remote.songs;
+    _currentIndex = remote.currentIndex;
+    _currentSong = remote.songs[remote.currentIndex];
+    _position = remote.position;
+    final seconds = _currentSong!.duration;
+    _duration = seconds != null && seconds > 0
+        ? Duration(seconds: seconds)
+        : Duration.zero;
+    _concatenatingSource = null;
+    await _saveQueueStateImmediate();
+    await _queueSync.adopted(remote);
+    notifyListeners();
+    _updateAllServices();
+    return true;
   }
 
   void _clearPersistedQueue() {
@@ -438,7 +491,6 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       debugPrint('[Player] toggleStar error: $e');
     }
   }
-
 
   String? _resolveInitialArtworkUrl(Song? song) {
     if (song == null) return null;
@@ -946,7 +998,9 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
           debugPrint(
               '[Player] ${_isPlaying ? 'â–¶ Playing' : 'â¸ Paused'} â€” "${_currentSong?.title ?? 'unknown'}" (${state.processingState.name})');
 
-          if (_isPlaying && (Platform.isWindows || Platform.isLinux || Platform.isMacOS) && !_isRenderingRemotely) {
+          if (_isPlaying &&
+              (Platform.isWindows || Platform.isLinux || Platform.isMacOS) &&
+              !_isRenderingRemotely) {
             _windowsPositionTimer?.cancel();
             _lastPolledPosition = null;
             _windowsPositionTimer = Timer.periodic(
@@ -1776,6 +1830,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
   @override
   Future<void> play() async {
+    if (!_isPlaying) await adoptRemoteQueue();
     _isManuallyPaused = false;
     _wasPlayingBeforeInterruption = false;
 
@@ -1859,6 +1914,9 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
     } catch (e) {
       await _audioPlayer.pause();
     }
+
+    _markQueueChanged();
+    unawaited(_queueSync.flush());
   }
 
   Future<void> pauseLocal() async {
@@ -1975,6 +2033,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   Future<void> seek(Duration position) async {
     _position = position;
     notifyListeners();
+    _markQueueChanged();
 
     if (_jukeboxService.enabled) {
       return;
@@ -2550,6 +2609,8 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
   Future<void> _prepareCurrentSong() async {
     if (_currentSong == null) return;
+    // Captured first: the position stream reports the new source's 0 while it loads.
+    final startAt = _position;
 
     if (_jukeboxService.enabled) return;
     try {
@@ -2607,8 +2668,9 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
         }
       }
 
-      if (_position.inMilliseconds > 0) {
-        await _audioPlayer.seek(_position);
+      if (startAt.inMilliseconds > 0) {
+        _position = startAt;
+        await _audioPlayer.seek(startAt);
       }
     } catch (e) {
       debugPrint('Error preparing current song after restore: $e');
@@ -2893,6 +2955,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
     _saveQueueStateImmediate();
     _persistDebounceTimer?.cancel();
+    _queueSyncTimer?.cancel();
     _jukeboxPollTimer?.cancel();
     _jukeboxService.removeListener(_onJukeboxEnabledChanged);
 
@@ -3122,6 +3185,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
   bool _upnpWasConnected = false;
   bool _upnpWasPlaying = false;
+
   /// Canonical URIs of the track the renderer is playing and the one pre-queued
   /// via SetNextAVTransportURI. Canonical because renderers echo URIs back with
   /// different escaping than we sent â€” see [UpnpService.canonicalUri].

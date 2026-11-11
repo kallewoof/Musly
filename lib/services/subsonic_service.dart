@@ -439,6 +439,41 @@ class SubsonicService {
     }
   }
 
+  /// Saves the queue as the user's server-side play queue, by index so a song queued twice stays twice.
+  /// Sent as a form POST: a long queue's ids would overflow a GET URL.
+  Future<void> savePlayQueue(
+      List<String> songIds, int currentIndex, Duration position) async {
+    if (_config == null) throw Exception('Server not configured');
+    final response = await _dio.post(
+      '$activeBaseUrl/rest/savePlayQueueByIndex',
+      data: {
+        ..._getAuthParams(),
+        'id': songIds,
+        'currentIndex': '$currentIndex',
+        'position': '${position.inMilliseconds}',
+      },
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        listFormat: ListFormat.multi,
+      ),
+    );
+    final body = response.data is String
+        ? json.decode(response.data as String)
+        : response.data;
+    final status = body?['subsonic-response']?['status'];
+    if (status != 'ok') {
+      throw Exception(body?['subsonic-response']?['error']?['message'] ??
+          'savePlayQueue failed');
+    }
+  }
+
+  Future<RemotePlayQueue?> getPlayQueue() async {
+    final response = await _request('getPlayQueueByIndex');
+    final queue = response['playQueueByIndex'];
+    if (queue is! Map<String, dynamic>) return null;
+    return RemotePlayQueue.fromJson(queue);
+  }
+
   Future<bool> ping() async {
     try {
       await _request('ping');
