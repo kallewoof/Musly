@@ -173,6 +173,7 @@ class PlayerProvider extends ChangeNotifier
     _upnpService.addListener(_onUpnpStateChanged);
     _upnpService.onRendererLost = _onUpnpRendererLost;
     _jukeboxService.addListener(_onJukeboxEnabledChanged);
+    _subsonicService.route.addListener(_onRouteChanged);
 
     _initializePlayer();
     _onJukeboxEnabledChanged();
@@ -314,6 +315,16 @@ class PlayerProvider extends ChangeNotifier
     } catch (e) {
       debugPrint('Error restoring queue state: $e');
     }
+  }
+
+  /// A loaded source has the previous server address baked into its URLs. While paused it is dropped, so
+  /// the next play() rebuilds it for the new route at the same position. While playing it is left alone.
+  void _onRouteChanged() {
+    if (_isPlaying || _audioPlayer.audioSource == null) return;
+    final keep = _position;
+    _concatenatingSource = null;
+    unawaited(
+        _audioPlayer.stop().then((_) => _position = keep, onError: (_) {}));
   }
 
   void _markQueueChanged() {
@@ -2958,6 +2969,7 @@ class PlayerProvider extends ChangeNotifier
     _queueSyncTimer?.cancel();
     _jukeboxPollTimer?.cancel();
     _jukeboxService.removeListener(_onJukeboxEnabledChanged);
+    _subsonicService.route.removeListener(_onRouteChanged);
 
     _windowsPositionTimer?.cancel();
     _castService.removeListener(_onCastStateChanged);

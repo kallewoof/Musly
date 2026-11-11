@@ -14,6 +14,7 @@ import 'l10n/app_localizations.dart';
 import 'models/server_config.dart';
 import 'services/services.dart';
 import 'services/audio_handler.dart';
+import 'services/server_route_watcher.dart';
 import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
 import 'services/analytics_service.dart';
@@ -120,6 +121,11 @@ void main() async {
   );
 
   final subsonicService = SubsonicService();
+  try {
+    ServerRouteWatcher(subsonicService).start();
+  } catch (e) {
+    debugPrint('Server route watcher unavailable: $e');
+  }
   final offlineService = OfflineService();
   final recommendationService = RecommendationService();
   final localMusicService = LocalMusicService();

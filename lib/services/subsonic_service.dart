@@ -110,13 +110,62 @@ class SubsonicService {
   String? _activeBaseUrl;
   String get activeBaseUrl => _activeBaseUrl ?? _config?.normalizedUrl ?? '';
 
+  /// The address requests currently go to. Changes when the LAN address starts or stops answering.
+  final ValueNotifier<String?> route = ValueNotifier<String?>(null);
+
+  void _setRoute(String baseUrl) {
+    _activeBaseUrl = baseUrl;
+    route.value = baseUrl;
+  }
+
+  bool get _onLan {
+    final lan = _config?.normalizedLanUrl;
+    return lan != null && activeBaseUrl == lan;
+  }
+
+  /// Routes requests to the LAN address while it answers as a Subsonic server, otherwise to the public
+  /// one. Called at configure time and again whenever the network may have changed.
+  Future<void> refreshRoute() async {
+    final config = _config;
+    if (config == null ||
+        config.isJellyfin ||
+        config.serverFamily == 'youtube') {
+      return;
+    }
+    final lan = config.normalizedLanUrl;
+    final next = lan != null && await _answersAsSubsonic(lan)
+        ? lan
+        : config.normalizedUrl;
+    if (next != _activeBaseUrl) debugPrint('[Subsonic] Route: $next');
+    _setRoute(next);
+  }
+
+  /// A 200 alone is not enough: a captive portal on a private address answers every request with one.
+  Future<bool> _answersAsSubsonic(String baseUrl) async {
+    try {
+      final q = _getAuthParams()
+          .entries
+          .map((e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      final resp = await _dio
+          .get('$baseUrl/rest/ping?$q')
+          .timeout(const Duration(seconds: 3));
+      final data =
+          resp.data is String ? json.decode(resp.data as String) : resp.data;
+      return data is Map && data['subsonic-response']?['status'] == 'ok';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> configure(ServerConfig config) async {
     _config = config;
     _identity = ClientIdentity.forInstall(
       installId: await StorageService().getOrCreateInstallId(),
       version: UpdateService.currentVersion,
     );
-    _activeBaseUrl = config.normalizedUrl;
+    _setRoute(config.normalizedUrl);
     if (config.isJellyfin) {
       _jellyfin ??= JellyfinService();
       _jellyfin!.configure(config);
@@ -136,30 +185,7 @@ class SubsonicService {
         clientCertPassword: config.clientCertificatePassword,
       );
 
-      if (config.lanUrl != null && config.lanUrl!.trim().isNotEmpty) {
-        final lanNormalized = config.normalizedLanUrl;
-        if (lanNormalized != null) {
-          try {
-            final authParams = _getAuthParams();
-            final q = authParams.entries
-                .map((e) =>
-                    '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
-                .join('&');
-            final pingUrl = '$lanNormalized/rest/ping?$q';
-            final resp =
-                await _dio.get(pingUrl).timeout(const Duration(seconds: 3));
-            if (resp.statusCode == 200) {
-              _activeBaseUrl = lanNormalized;
-              debugPrint(
-                  '[Subsonic] Successfully connected via LAN: $lanNormalized');
-            }
-          } catch (_) {
-            debugPrint(
-                '[Subsonic] LAN unavailable, using WAN: ${config.normalizedUrl}');
-            _activeBaseUrl = config.normalizedUrl;
-          }
-        }
-      }
+      await refreshRoute();
     }
 
     _clientSalt = await StorageService().getOrCreateSubsonicSalt();
@@ -386,7 +412,16 @@ class SubsonicService {
     final url = _buildUrl(endpoint, params);
 
     try {
-      final response = await _dio.get(url);
+      Response response;
+      try {
+        response = await _dio.get(url);
+      } on DioException catch (e) {
+        if (!_onLan || !_isUnreachable(e)) rethrow;
+        debugPrint(
+            '[Subsonic] LAN unreachable, falling back to the public URL');
+        _setRoute(_config!.normalizedUrl);
+        response = await _dio.get(_buildUrl(endpoint, params));
+      }
       final data = response.data;
 
       if (data is String) {
@@ -473,6 +508,10 @@ class SubsonicService {
     if (queue is! Map<String, dynamic>) return null;
     return RemotePlayQueue.fromJson(queue);
   }
+
+  static bool _isUnreachable(DioException e) =>
+      e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout;
 
   Future<bool> ping() async {
     try {
