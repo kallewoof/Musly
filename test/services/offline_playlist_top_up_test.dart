@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/services/offline_service.dart';
@@ -60,13 +59,6 @@ void main() {
   });
 
   tearDown(queueDrained);
-
-  tearDownAll(() {
-    // bootstrap.dart mocks path_provider to '.', so initialize() creates an
-    // offline_music directory in the working tree. Do not leave it behind.
-    final dir = Directory('./offline_music');
-    if (dir.existsSync()) dir.deleteSync(recursive: true);
-  });
 
   test('a track added to a downloaded playlist is downloaded', () async {
     final queued = await offline.topUpDownloadedPlaylist(

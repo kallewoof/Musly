@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,13 +78,6 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await offline.initialize();
-  });
-
-  tearDownAll(() {
-    // bootstrap.dart mocks path_provider to '.', so initialize() creates an
-    // offline_music directory in the working tree. Do not leave it behind.
-    final dir = Directory('./offline_music');
-    if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
   testWidgets('closing a playlist before it loads still tops it up',
