@@ -2504,6 +2504,7 @@ class PlayerProvider extends ChangeNotifier
       _discordRpcService.clearPresence();
     } catch (_) {}
     _clearPersistedQueue();
+    _audioHandler.clearNowPlaying();
     _audioPlayer.stop();
     _isPlaying = false;
     _position = Duration.zero;
@@ -2529,6 +2530,7 @@ class PlayerProvider extends ChangeNotifier
       } catch (_) {}
     }
 
+    _audioHandler.clearNowPlaying();
     try {
       await _audioPlayer.stop();
     } catch (_) {}

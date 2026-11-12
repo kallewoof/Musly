@@ -91,6 +91,24 @@ void main() {
       expect(playerProvider.currentIndex, -1);
     });
 
+    // RD: clearing the queue stops the player but leaves the song in the media session, which the audio
+    // handler then holds as paused, so the lock screen keeps offering a song that is gone.
+    test('clearing the queue takes the song off the lock screen', () async {
+      final handler = MuslyAudioHandler();
+      final player = PlayerProvider(subsonicService, StorageService(),
+          FakeCastService(), UpnpService(), handler, JukeboxService(),
+          TranscodingService());
+      addTearDown(player.dispose);
+
+      handler.updateNowPlaying(id: 'song-1', title: 'Track');
+      player.clearQueue();
+      expect(handler.mediaItem.value?.id, isEmpty);
+
+      handler.updateNowPlaying(id: 'song-1', title: 'Track');
+      await player.resetForServerSwitch();
+      expect(handler.mediaItem.value?.id, isEmpty);
+    });
+
     test('should check if has next/previous', () {
       final songs = [
         Song(id: '1', title: 'Song 1'),

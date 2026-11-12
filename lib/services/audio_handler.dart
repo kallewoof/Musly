@@ -414,7 +414,16 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
+  @visibleForTesting
+  PlaybackState buildPlaybackState(PlaybackEvent event) =>
+      _buildPlaybackState(event);
+
   PlaybackState _buildPlaybackState(PlaybackEvent event) {
+    // An idle state stops audio_service's platform service: on iOS that drops Musly from the lock screen
+    // and unhooks the remote commands, so the AirPods buttons go to another app. A player stopped while
+    // a song is still current (a route change, an adopted queue) is therefore published as paused.
+    final holdsSong = (mediaItem.value?.id ?? '').isNotEmpty &&
+        _player.processingState == ProcessingState.idle;
     final processingStateMap = {
       ProcessingState.idle: AudioProcessingState.idle,
       ProcessingState.loading: AudioProcessingState.loading,
@@ -439,10 +448,13 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         MediaAction.setRepeatMode,
       },
       androidCompactActionIndices: const [0, 1, 2],
-      processingState:
-          processingStateMap[_player.processingState] ?? AudioProcessingState.idle,
+      processingState: holdsSong
+          ? AudioProcessingState.ready
+          : processingStateMap[_player.processingState] ??
+              AudioProcessingState.idle,
       playing: _player.playing,
-      updatePosition: _player.position,
+      updatePosition:
+          holdsSong ? playbackState.value.updatePosition : _player.position,
       bufferedPosition: _player.bufferedPosition,
       speed: _player.speed,
       queueIndex: event.currentIndex,

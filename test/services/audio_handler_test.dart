@@ -85,4 +85,29 @@ void main() {
     expect(handler.mediaItem.value?.id, 'song-1');
     expect(handler.mediaItem.value?.title, 'Track');
   });
+
+  // RD: a stop while paused (the route changing on leaving home, another device's queue adopted) is published
+  // as idle, which stops audio_service's service: Musly vanishes from the iOS lock screen and the AirPods
+  // buttons start Apple Music instead.
+  test('a stopped player with a current song is published as paused, not idle',
+      () {
+    handler.updateNowPlaying(id: 'song-1', title: 'Track');
+    handler.playbackState
+        .add(PlaybackState(updatePosition: const Duration(seconds: 84)));
+
+    final state = handler.buildPlaybackState(handler.player.playbackEvent);
+    expect(state.processingState, AudioProcessingState.ready);
+    expect(state.playing, isFalse);
+    expect(state.updatePosition, const Duration(seconds: 84));
+  });
+
+  // RD: the paused hold also covers a cleared queue, so after clearing it (or switching servers) the lock
+  // screen keeps offering a song that is gone.
+  test('a stopped player without a current song is published as idle', () {
+    handler.updateNowPlaying(id: 'song-1', title: 'Track');
+    handler.clearNowPlaying();
+
+    final state = handler.buildPlaybackState(handler.player.playbackEvent);
+    expect(state.processingState, AudioProcessingState.idle);
+  });
 }
