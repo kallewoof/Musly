@@ -76,6 +76,20 @@ void main() {
     expect(service.activeBaseUrl, lan.url);
   });
 
+  // RD: the LAN band is driven by the configured public address instead of the one in use, so a phone at
+  // home on its LAN address shows no band.
+  test('a route on the LAN address counts as local', () async {
+    await service.configure(ServerConfig(
+      serverUrl: 'https://music.example.com',
+      lanUrl: lan.url,
+      username: 'u',
+      password: 'p',
+    ));
+
+    expect(service.activeBaseUrl, lan.url);
+    expect(service.routeIsLocal, isTrue);
+  });
+
   // RD: any 200 counts as the server answering, so on a network whose captive portal sits at the same
   // private address, every request goes to the portal and nothing plays.
   test('does not take a captive portal on the LAN address for the server',

@@ -18,6 +18,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          Provider<SubsonicService>.value(value: subsonic),
           ChangeNotifierProvider<LocaleService>(create: (_) => LocaleService()),
           ChangeNotifierProvider<ThemeService>(create: (_) => ThemeService()),
           ChangeNotifierProvider<TvDetectionService>.value(

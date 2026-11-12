@@ -26,6 +26,7 @@ import 'services/tv_detection_service.dart';
 import 'package:musly/widgets/dialogs/privacy_policy_dialog.dart';
 import 'package:musly/widgets/dialogs/milestone_celebration_dialog.dart';
 import 'package:musly/widgets/dialogs/update_dialog.dart';
+import 'widgets/common/lan_indicator_band.dart';
 import 'widgets/navigation/tv_remote_scope.dart';
 import 'providers/providers.dart';
 import 'screens/screens.dart';
@@ -305,8 +306,23 @@ class MuslyApp extends StatelessWidget {
           locale: localeService.currentLocale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          builder: (context, child) =>
-              TvRemoteScope(child: child ?? const SizedBox.shrink()),
+          builder: (context, child) => TvRemoteScope(
+            child: Stack(
+              alignment: Alignment.topLeft,
+              children: [
+                child ?? const SizedBox.shrink(),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LanIndicatorBand(
+                    service:
+                        Provider.of<SubsonicService>(context, listen: false),
+                  ),
+                ),
+              ],
+            ),
+          ),
           home: const AuthWrapper(),
           navigatorObservers: [AnalyticsNavigatorObserver()],
         );

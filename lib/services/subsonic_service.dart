@@ -134,6 +134,27 @@ class SubsonicService {
     return lan != null && activeBaseUrl == lan;
   }
 
+  /// Whether requests currently go to an address on the local network: the LAN address in use, or a server
+  /// whose only address is local (a desktop that never leaves home).
+  bool get routeIsLocal => isLocalAddress(activeBaseUrl);
+
+  /// `.local` and dotless names, localhost, and the private and link-local IPv4 and IPv6 ranges.
+  static bool isLocalAddress(String baseUrl) {
+    final host = Uri.tryParse(baseUrl)?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return false;
+    if (host == 'localhost' || host.endsWith('.local')) return true;
+    final ip = InternetAddress.tryParse(host);
+    if (ip == null) return !host.contains('.');
+    if (ip.isLoopback || ip.isLinkLocal) return true;
+    if (ip.type == InternetAddressType.IPv4) {
+      final b = ip.rawAddress;
+      return b[0] == 10 ||
+          (b[0] == 172 && b[1] >= 16 && b[1] <= 31) ||
+          (b[0] == 192 && b[1] == 168);
+    }
+    return (ip.rawAddress[0] & 0xfe) == 0xfc;
+  }
+
   /// Routes requests to the LAN address while it answers as a Subsonic server, otherwise to the public
   /// one. Called at configure time and again whenever the network may have changed.
   Future<void> refreshRoute() async {
