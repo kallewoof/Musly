@@ -106,5 +106,21 @@ void main() {
       expect(song.replayGainAlbumGain, -5.4);
       expect(song.replayGainTrackPeak, 0.95);
     });
+
+    // RD: toJson leaves the star out, so every song read back from a saved queue or cache shows unstarred
+    // although the server has it starred.
+    test('keeps its star through toJson and fromJson', () {
+      final song = Song(id: '1', title: 'T', starred: true);
+
+      expect(Song.fromJson(song.toJson()).starred, isTrue);
+    });
+
+    // RD: toJson writes the flag for unstarred songs too, and fromJson, reading any value as the server's
+    // timestamp, brings every unstarred song back starred.
+    test('stays unstarred through toJson and fromJson', () {
+      final song = Song(id: '1', title: 'T', starred: false);
+
+      expect(Song.fromJson(song.toJson()).starred, isFalse);
+    });
   });
 }

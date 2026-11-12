@@ -148,6 +148,8 @@ class Song {
             artistParticipants!.map((artist) => artist.toJson()).toList(),
       'created': created?.toIso8601String(),
       if (hasDolbyAtmos != null) 'hasDolbyAtmos': hasDolbyAtmos,
+      // fromJson reads the server's starred timestamp as presence, so any value reads back as starred.
+      if (starred == true) 'starred': true,
     };
   }
 

@@ -224,6 +224,77 @@ void main() {
     expect(server.saves, isEmpty);
   });
 
+  List<dynamic> savedQueue(SharedPreferences prefs) =>
+      jsonDecode(prefs.getString('persistent_queue')!) as List<dynamic>;
+
+  // RD: the star changes only the in-memory current song, so the queue restored at the next start shows it
+  // unstarred although the server has the star.
+  test('a star on the playing song is in the saved queue', () async {
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+    // The track change's own debounced save lands first, so only the star's save can carry the star.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    await player.toggleFavorite();
+    await settle();
+
+    expect(player.queue[1].starred, isTrue);
+    final saved = savedQueue(await SharedPreferences.getInstance());
+    expect((saved[1] as Map)['id'], 'b');
+    expect((saved[1] as Map)['starred'], isTrue);
+  });
+
+  // RD: starring a song from a list updates only the now-playing song, so the same song further down the
+  // queue, and the next restart, show it unstarred.
+  test('a star from a list reaches every queue copy of the song', () async {
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b'), song('a')]);
+    await player.adoptTrackAt(1);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    await player.toggleFavoriteForSong(song('a'));
+    await settle();
+
+    expect(player.queue.where((s) => s.id == 'a').map((s) => s.starred),
+        [true, true]);
+    final saved = savedQueue(await SharedPreferences.getInstance());
+    expect((saved[0] as Map)['starred'], isTrue);
+  });
+
+  // RD: the star is saved by marking the queue changed, so starring on a device that only restored its queue
+  // pushes that queue over the one the phone left.
+  test('a star does not push the queue', () async {
+    player = await playerWith({
+      'persistent_queue': jsonEncode([song('old').toJson()]),
+      'persistent_queue_index': 0,
+      'persistent_queue_song_id': 'old',
+      'persistent_queue_position_ms': 5000,
+    });
+
+    await player.toggleFavorite();
+    player.didChangeAppLifecycleState(AppLifecycleState.paused);
+    await settle();
+
+    expect(player.currentSong?.starred, isTrue);
+    expect(server.saves, isEmpty);
+  });
+
+  // RD: the idle player's position report of 0 at startup overwrites the restored position, so the app
+  // reopens on the right song at 0:00 and play starts the song over.
+  test('the restored position survives startup', () async {
+    player = await playerWith({
+      'persistent_queue': jsonEncode([song('a').toJson(), song('b').toJson()]),
+      'persistent_queue_index': 1,
+      'persistent_queue_song_id': 'b',
+      'persistent_queue_position_ms': 26000,
+    });
+    await settle();
+
+    expect(player.currentSong?.id, 'b');
+    expect(player.position, const Duration(seconds: 26));
+  });
+
   // RD: the lifecycle handler marks the queue restored at launch as changed, so a device opened but never
   // played overwrites the queue the phone left on the server.
   test('a queue that was only restored is never pushed', () async {

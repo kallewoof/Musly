@@ -1104,6 +1104,9 @@ class PlayerProvider extends ChangeNotifier
     _positionSub = _audioPlayer.positionStream.listen(
       (position) {
         if (_isRenderingRemotely) return;
+        // An idle player has nothing loaded and reports 0, which would overwrite a position restored at
+        // launch or adopted from another device before play loads the track at it.
+        if (_audioPlayer.processingState == ProcessingState.idle) return;
 
         _position = position;
         _positionController.add(position);
@@ -2922,14 +2925,29 @@ class PlayerProvider extends ChangeNotifier
     });
   }
 
+  /// The queue's copies of a song carry its starred flag, and the queue is what a restart restores, so a
+  /// star is written into them and the queue saved locally. Not marked as a queue change: nothing played,
+  /// and a restored queue must not be pushed over another device's for a star.
+  void _setStarred(String songId, bool starred) {
+    if (_currentSong?.id == songId) {
+      _currentSong = _currentSong!.copyWith(starred: starred);
+    }
+    for (var i = 0; i < _queue.length; i++) {
+      if (_queue[i].id == songId) {
+        _queue[i] = _queue[i].copyWith(starred: starred);
+      }
+    }
+    notifyListeners();
+    unawaited(_saveQueueStateImmediate());
+  }
+
   Future<void> toggleFavorite() async {
     if (_currentSong == null) return;
 
     final isStarred = _currentSong!.starred == true;
 
     final newSong = _currentSong!.copyWith(starred: !isStarred);
-    _currentSong = newSong;
-    notifyListeners();
+    _setStarred(newSong.id, !isStarred);
 
     try {
       if (isStarred) {
@@ -2942,8 +2960,7 @@ class PlayerProvider extends ChangeNotifier
       _libraryProvider?.loadStarred();
     } catch (e) {
       debugPrint('Error toggling favorite: $e');
-      _currentSong = _currentSong!.copyWith(starred: isStarred);
-      notifyListeners();
+      _setStarred(newSong.id, isStarred);
     }
   }
 
@@ -2958,11 +2975,7 @@ class PlayerProvider extends ChangeNotifier
             song, _subsonicService, _libraryProvider);
       }
       _libraryProvider?.loadStarred();
-
-      if (_currentSong?.id == song.id) {
-        _currentSong = _currentSong!.copyWith(starred: !isStarred);
-        notifyListeners();
-      }
+      _setStarred(song.id, !isStarred);
     } catch (e) {
       debugPrint('Error toggling favorite for song: $e');
     }
