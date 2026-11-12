@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:musly/models/models.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/services/audio_handler.dart';
@@ -74,6 +75,33 @@ void main() {
     await check(4);
 
     expect(player.currentSong?.id, 'b');
+  });
+
+  // RD: moving on jumps to the next entry of the loaded gapless playlist, which the stuck decoder never
+  // starts, so the queue halts on the next song at 0:00 instead. Tests have no decoder to get stuck, so
+  // the jump would appear to work here: what is checked is that the stuck playlist is replaced.
+  test('a stuck gapless queue loads the next song afresh', () async {
+    final stuck = ConcatenatingAudioSource(children: []);
+    player.debugGaplessSource = stuck;
+    await player.seek(const Duration(seconds: 199));
+    player.debugSetPlaying(true);
+
+    await check(4);
+
+    expect(player.currentSong?.id, 'b');
+    expect(player.debugGaplessSource, isNot(same(stuck)));
+  });
+
+  // RD: the recovery ignores repeat-one and moves to the next song, so a song set to repeat plays once.
+  test('with repeat-one a stuck song starts over', () async {
+    player.setRepeatMode(RepeatMode.one);
+    await player.seek(const Duration(seconds: 199));
+    player.debugSetPlaying(true);
+
+    await check(4);
+
+    expect(player.currentSong?.id, 'a');
+    expect(player.position, Duration.zero);
   });
 
   // RD: the watchdog takes any pause in progress for a stuck file, so a song buffering on a slow network is

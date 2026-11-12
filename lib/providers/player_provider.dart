@@ -376,8 +376,24 @@ class PlayerProvider extends ChangeNotifier
     _stallPosition = null;
     debugPrint(
         '[Player] stuck at the end of "${_currentSong?.title}"; moving on');
-    unawaited(_repeatMode == RepeatMode.one ? seek(Duration.zero) : skipNext());
+    // The stuck decoder leaves the loaded playlist unable to move by index (the next entry never starts), so
+    // the queue's source is dropped and the next song loaded afresh, as a pick from the queue would be.
+    _concatenatingSource = null;
+    if (_repeatMode == RepeatMode.one) {
+      unawaited(stop().then((_) => play()));
+    } else {
+      unawaited(skipNext());
+    }
   }
+
+  /// Tests have no audio backend, so a gapless queue's source can only be put in place, and a replacement
+  /// seen, this way.
+  @visibleForTesting
+  ConcatenatingAudioSource? get debugGaplessSource => _concatenatingSource;
+
+  @visibleForTesting
+  set debugGaplessSource(ConcatenatingAudioSource? source) =>
+      _concatenatingSource = source;
 
   /// Tests have no audio backend, so nothing else can put the player in the playing state.
   @visibleForTesting
