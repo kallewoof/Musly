@@ -26,3 +26,29 @@ class LanIndicatorBand extends StatelessWidget {
     );
   }
 }
+
+/// Lays [child] out full size and the [LanIndicatorBand] across its top, just below the status bar: at the
+/// very top edge a phone's status bar strip would hide it. Without a status bar (desktop) that is the top.
+class LanIndicatorOverlay extends StatelessWidget {
+  const LanIndicatorOverlay(
+      {super.key, required this.service, required this.child});
+
+  final SubsonicService service;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.topLeft,
+      children: [
+        child,
+        Positioned(
+          top: MediaQuery.paddingOf(context).top,
+          left: 0,
+          right: 0,
+          child: LanIndicatorBand(service: service),
+        ),
+      ],
+    );
+  }
+}

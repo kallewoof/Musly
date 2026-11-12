@@ -307,20 +307,9 @@ class MuslyApp extends StatelessWidget {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => TvRemoteScope(
-            child: Stack(
-              alignment: Alignment.topLeft,
-              children: [
-                child ?? const SizedBox.shrink(),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: LanIndicatorBand(
-                    service:
-                        Provider.of<SubsonicService>(context, listen: false),
-                  ),
-                ),
-              ],
+            child: LanIndicatorOverlay(
+              service: Provider.of<SubsonicService>(context, listen: false),
+              child: child ?? const SizedBox.shrink(),
             ),
           ),
           home: const AuthWrapper(),

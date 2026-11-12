@@ -74,4 +74,29 @@ void main() {
     await useServer('https://music.example.com');
     expect(opacity(), 0);
   });
+
+  // RD: the band is placed at the very top pixel row, which on a phone is the status bar strip at the rounded
+  // top edge, so it never shows there.
+  testWidgets('the overlay puts the band just below the status bar',
+      (tester) async {
+    final service = SubsonicService();
+    Future<Offset> bandTopLeft(double statusBar) async {
+      await tester.pumpWidget(MediaQuery(
+        data: MediaQueryData(
+            size: const Size(430, 932),
+            padding: EdgeInsets.only(top: statusBar)),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: LanIndicatorOverlay(
+              service: service, child: const SizedBox.expand()),
+        ),
+      ));
+      return tester.getTopLeft(find.byType(LanIndicatorBand));
+    }
+
+    expect(await bandTopLeft(59), const Offset(0, 59));
+    expect(tester.getSize(find.byType(LanIndicatorBand)).width,
+        tester.getSize(find.byType(LanIndicatorOverlay)).width);
+    expect(await bandTopLeft(0), Offset.zero);
+  });
 }
