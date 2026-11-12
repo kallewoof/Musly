@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:volume_controller/volume_controller.dart';
@@ -15,6 +16,12 @@ class _VolumeSliderState extends State<VolumeSlider> {
   double _dragValue = 0.0;
   double _systemVolume = 0.0;
 
+  // volume_controller's iOS listener switches the shared audio session to mix with others, after which iOS
+  // no longer treats Musly as the playing app: it leaves the lock screen and the AirPods start Apple Music.
+  // On iOS the slider reads the volume when it opens instead of following it.
+  static bool get _followsSystemVolume =>
+      defaultTargetPlatform != TargetPlatform.iOS;
+
   @override
   void initState() {
     super.initState();
@@ -22,16 +29,18 @@ class _VolumeSliderState extends State<VolumeSlider> {
     VolumeController.instance.getVolume().then((volume) {
       if (mounted) setState(() => _systemVolume = volume);
     });
-    VolumeController.instance.addListener((volume) {
-      if (mounted && !_isDragging) {
-        setState(() => _systemVolume = volume);
-      }
-    });
+    if (_followsSystemVolume) {
+      VolumeController.instance.addListener((volume) {
+        if (mounted && !_isDragging) {
+          setState(() => _systemVolume = volume);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    VolumeController.instance.removeListener();
+    if (_followsSystemVolume) VolumeController.instance.removeListener();
     super.dispose();
   }
 
