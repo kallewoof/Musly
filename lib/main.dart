@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'l10n/app_localizations.dart';
 import 'models/server_config.dart';
@@ -64,6 +65,13 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // sqflite has no Linux or Windows implementation: without the FFI factory every library database call
+  // fails there, and the library sync ends with no songs.
+  if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   if (!kIsWeb && Platform.isAndroid) {
     try {
