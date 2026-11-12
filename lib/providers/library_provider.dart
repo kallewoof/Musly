@@ -844,7 +844,7 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
   @override
   Future<SearchResult> search(String query) async {
     if (_localOnlyMode) {
-      return _searchLocal(query);
+      return searchCached(query);
     }
     return await _subsonicService.search(query);
   }
@@ -864,9 +864,11 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
     }
   }
 
-  SearchResult _searchLocal(String query) {
+  /// Searches the library as this device holds it, as the Library screen shows it: instant and offline, though
+  /// up to one background refresh behind the server.
+  SearchResult searchCached(String query) {
     final lowerQuery = query.toLowerCase();
-    final songs = _cachedAllSongs
+    final songs = cachedAllSongs
         .where(
           (song) =>
               song.title.toLowerCase().contains(lowerQuery) ||
@@ -875,11 +877,11 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
         )
         .take(50)
         .toList();
-    final artists = _artists
+    final artists = this.artists
         .where((artist) => artist.name.toLowerCase().contains(lowerQuery))
         .take(20)
         .toList();
-    final albums = _cachedAllAlbums
+    final albums = cachedAllAlbums
         .where(
           (album) =>
               album.name.toLowerCase().contains(lowerQuery) ||

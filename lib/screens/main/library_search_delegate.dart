@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 import 'package:musly/providers/library_provider.dart';
+import 'package:musly/providers/player_provider.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/utils/navigation_helper.dart';
+import 'package:musly/screens/detail/album_screen.dart';
+import 'package:musly/screens/detail/artist_screen.dart';
 import 'package:musly/screens/detail/playlist_screen.dart';
+import 'package:musly/widgets/common/album_artwork.dart';
+import 'package:musly/widgets/common/song_tile.dart';
 import 'package:musly/l10n/app_localizations.dart';
 
 class LibrarySearchDelegate extends SearchDelegate<String> {
@@ -82,13 +88,20 @@ class LibrarySearchDelegate extends SearchDelegate<String> {
   }
 
   Widget _buildSearchResults(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final lowerQuery = query.toLowerCase();
-
-    final matchingPlaylists = libraryProvider.playlists
+    final cached = libraryProvider.searchCached(query);
+    final songs = cached.songs;
+    final artists = cached.artists;
+    final albums = cached.albums;
+    final playlists = libraryProvider.playlists
         .where((p) => p.name.toLowerCase().contains(lowerQuery))
         .toList();
 
-    if (matchingPlaylists.isEmpty) {
+    if (songs.isEmpty &&
+        artists.isEmpty &&
+        albums.isEmpty &&
+        playlists.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -100,7 +113,7 @@ class LibrarySearchDelegate extends SearchDelegate<String> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No playlists found',
+              l10n.noResults,
               style: TextStyle(
                 color: isDark ? Colors.white54 : Colors.black45,
                 fontSize: 16,
@@ -111,49 +124,103 @@ class LibrarySearchDelegate extends SearchDelegate<String> {
       );
     }
 
+    void open(Widget screen) {
+      close(context, '');
+      NavigationHelper.push(context, screen);
+    }
+
     return ListView(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'Playlists',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
+        if (songs.isNotEmpty) ...[
+          _sectionHeader(l10n.songs),
+          ...songs.map(
+            (song) => SongTile(
+              song: song,
+              onTap: () {
+                final player =
+                    Provider.of<PlayerProvider>(context, listen: false);
+                close(context, '');
+                player.playSongWithRadio(song);
+              },
             ),
           ),
-        ),
-        ...matchingPlaylists.map(
-          (playlist) => ListTile(
-            leading: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: AppTheme.brandRed.withValues(alpha: 0.2),
+        ],
+        if (artists.isNotEmpty) ...[
+          _sectionHeader(l10n.artists),
+          ...artists.map(
+            (artist) => ListTile(
+              leading: AlbumArtwork(
+                coverArt: artist.coverArt ??
+                    artist.artistImageUrl ??
+                    (artist.id.isNotEmpty ? 'ar-${artist.id}' : null),
+                size: 48,
+                borderRadius: 24,
               ),
-              child: const Icon(
-                CupertinoIcons.music_note_list,
-                color: AppTheme.brandRed,
-              ),
+              title: Text(artist.name),
+              subtitle: artist.albumCount == null
+                  ? null
+                  : Text(l10n.albumsCount(artist.albumCount!)),
+              onTap: () => open(ArtistScreen(artistId: artist.id)),
             ),
-            title: Text(playlist.name),
-            subtitle: Text(AppLocalizations.of(context)!
-                .songsCount(playlist.songCount ?? 0)),
-            onTap: () {
-              close(context, '');
-              NavigationHelper.push(
-                context,
+          ),
+        ],
+        if (albums.isNotEmpty) ...[
+          _sectionHeader(l10n.albums),
+          ...albums.map(
+            (album) => ListTile(
+              leading: AlbumArtwork(
+                coverArt: album.coverArt,
+                size: 48,
+                borderRadius: 4,
+              ),
+              title: Text(album.name),
+              subtitle: album.artist == null ? null : Text(album.artist!),
+              onTap: () => open(AlbumScreen(albumId: album.id)),
+            ),
+          ),
+        ],
+        if (playlists.isNotEmpty) ...[
+          _sectionHeader(l10n.playlists),
+          ...playlists.map(
+            (playlist) => ListTile(
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: AppTheme.brandRed.withValues(alpha: 0.2),
+                ),
+                child: const Icon(
+                  CupertinoIcons.music_note_list,
+                  color: AppTheme.brandRed,
+                ),
+              ),
+              title: Text(playlist.name),
+              subtitle: Text(l10n.songsCount(playlist.songCount ?? 0)),
+              onTap: () => open(
                 PlaylistScreen(
                   playlistId: playlist.id,
                   playlistName: playlist.name,
                 ),
-              );
-            },
+              ),
+            ),
           ),
-        ),
+        ],
       ],
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white : Colors.black,
+        ),
+      ),
     );
   }
 }
