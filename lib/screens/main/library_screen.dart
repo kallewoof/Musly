@@ -632,17 +632,34 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          _isGridView
-                              ? CupertinoIcons.list_bullet
-                              : CupertinoIcons.square_grid_2x2,
-                          size: 18,
-                        ),
-                        tooltip:
-                            _isGridView ? 'Switch to List' : 'Switch to Grid',
-                        onPressed: () =>
-                            setState(() => _isGridView = !_isGridView),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_selectedFilter == 'Songs' &&
+                              libraryProvider.cachedAllSongs.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => Provider.of<PlayerProvider>(
+                                      context,
+                                      listen: false)
+                                  .shuffleLibrary(),
+                              icon:
+                                  const Icon(Icons.shuffle_rounded, size: 18),
+                              label: Text(AppLocalizations.of(context)!.shuffle),
+                            ),
+                          IconButton(
+                            icon: Icon(
+                              _isGridView
+                                  ? CupertinoIcons.list_bullet
+                                  : CupertinoIcons.square_grid_2x2,
+                              size: 18,
+                            ),
+                            tooltip: _isGridView
+                                ? 'Switch to List'
+                                : 'Switch to Grid',
+                            onPressed: () =>
+                                setState(() => _isGridView = !_isGridView),
+                          ),
+                        ],
                       ),
                     ],
                   ),
