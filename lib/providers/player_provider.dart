@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' show Random;
+import 'dart:ui' show AppExitResponse;
 
 import 'package:audio_session/audio_session.dart';
 import 'package:audio_service/audio_service.dart';
@@ -195,8 +196,12 @@ class PlayerProvider extends ChangeNotifier
 
     _restoreQueueState();
 
+    // The local save also bounds what a crash or a killed process loses to one tick.
     _queueSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_isPlaying) _markQueueChanged();
+      if (_isPlaying) {
+        _markQueueChanged();
+        unawaited(_saveQueueStateImmediate());
+      }
       unawaited(_queueSync.flush());
     });
 
@@ -214,6 +219,19 @@ class PlayerProvider extends ChangeNotifier
     } else if (state == AppLifecycleState.resumed && !_isPlaying) {
       unawaited(adoptRemoteQueue());
     }
+  }
+
+  /// Closing a desktop window quits without any lifecycle change, so the position is saved here, locally
+  /// and to the server, before the exit goes ahead. The push is bounded: an unreachable server must not
+  /// hold the window open.
+  @override
+  Future<AppExitResponse> didRequestAppExit() async {
+    if (_isPlaying) _markQueueChanged();
+    await _saveQueueStateImmediate();
+    await _queueSync
+        .flush()
+        .timeout(const Duration(seconds: 2), onTimeout: () {});
+    return AppExitResponse.exit;
   }
 
   void _wireAudioHandlerCallbacks() {

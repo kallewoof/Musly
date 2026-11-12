@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -188,6 +189,39 @@ void main() {
 
     expect(server.saves, isNotEmpty);
     expect(server.saves.last['position'], ['42000']);
+  });
+
+  // RD: closing the desktop window quits without a lifecycle change, so the position played to is saved
+  // nowhere and the next start, here or on another device, begins the song at 0:00.
+  test('closing the app while playing saves and pushes the position', () async {
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+    await player.seek(const Duration(seconds: 42));
+    player.debugSetPlaying(true);
+
+    expect(await player.didRequestAppExit(), AppExitResponse.exit);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt('persistent_queue_position_ms'), 42000);
+    expect(prefs.getString('persistent_queue_song_id'), 'b');
+    expect(server.saves, isNotEmpty);
+    expect(server.saves.last['position'], ['42000']);
+  });
+
+  // RD: the exit handler marks whatever queue is loaded, so closing a device that only restored its queue
+  // pushes it over the one the phone left.
+  test('closing the app without playing pushes nothing', () async {
+    player = await playerWith({
+      'persistent_queue': jsonEncode([song('old').toJson()]),
+      'persistent_queue_index': 0,
+      'persistent_queue_song_id': 'old',
+      'persistent_queue_position_ms': 5000,
+    });
+
+    expect(await player.didRequestAppExit(), AppExitResponse.exit);
+
+    expect(server.saves, isEmpty);
   });
 
   // RD: the lifecycle handler marks the queue restored at launch as changed, so a device opened but never
