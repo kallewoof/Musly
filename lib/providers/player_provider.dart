@@ -135,6 +135,10 @@ class PlayerProvider extends ChangeNotifier
   late final PlayQueueSync _queueSync = PlayQueueSync(_subsonicService);
   Timer? _queueSyncTimer;
 
+  Timer? _stallTimer;
+  Duration? _stallPosition;
+  int _stallTicks = 0;
+
   final bool _reactivatingSession = false;
 
   Timer? _sleepTimer;
@@ -204,6 +208,9 @@ class PlayerProvider extends ChangeNotifier
       }
       unawaited(_queueSync.flush());
     });
+
+    _stallTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => checkForStallAtEnd());
 
     WidgetsBinding.instance.addObserver(this);
   }
@@ -345,6 +352,31 @@ class PlayerProvider extends ChangeNotifier
     unawaited(_audioPlayer.stop().then((_) {
       if (_currentSong?.id == songId) _position = keep;
     }, onError: (_) {}));
+  }
+
+  /// A damaged file can leave the decoder stuck at the end of a song, still playing but never finishing,
+  /// so nothing moves on to the next one. Three checks (a second apart) without progress in the last two
+  /// seconds of a song count as its end. Earlier in a song a pause in progress is more likely the network
+  /// buffering, and is left alone.
+  @visibleForTesting
+  void checkForStallAtEnd() {
+    final nearEnd = _duration > Duration.zero &&
+        _duration - _position <= const Duration(seconds: 2);
+    if (!_isPlaying ||
+        _isRenderingRemotely ||
+        _isPlayingRadio ||
+        !nearEnd ||
+        _position != _stallPosition) {
+      _stallPosition = _position;
+      _stallTicks = 0;
+      return;
+    }
+    if (++_stallTicks < 3) return;
+    _stallTicks = 0;
+    _stallPosition = null;
+    debugPrint(
+        '[Player] stuck at the end of "${_currentSong?.title}"; moving on');
+    unawaited(_repeatMode == RepeatMode.one ? seek(Duration.zero) : skipNext());
   }
 
   /// Tests have no audio backend, so nothing else can put the player in the playing state.
@@ -3033,6 +3065,7 @@ class PlayerProvider extends ChangeNotifier
     _saveQueueStateImmediate();
     _persistDebounceTimer?.cancel();
     _queueSyncTimer?.cancel();
+    _stallTimer?.cancel();
     _jukeboxPollTimer?.cancel();
     _jukeboxService.removeListener(_onJukeboxEnabledChanged);
     _subsonicService.route.removeListener(_onRouteChanged);
