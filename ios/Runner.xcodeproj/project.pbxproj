@@ -7,10 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		075711C3901D618C729B3A4A /* MuslyWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 60623231CCAD0A0108BC057A /* MuslyWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		6C82CAC80BEA5B6672D13935 /* FavoriteControlShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D23AE316B0903F389D1FD12 /* FavoriteControlShared.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		761CAC18B3945BDCE4B5BE75 /* FavoriteControlPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 845C87BF21E3848C638A09D5 /* FavoriteControlPlugin.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		7B20921E9CF274364627C150 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BD54408F5B2D752377936346 /* Pods_RunnerTests.framework */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -21,6 +24,9 @@
 		AA01234501234567890ABCD3 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01234501234567890ABC03 /* CarPlaySceneDelegate.swift */; };
 		AA01234501234567890ABCD4 /* AirPlayButtonFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01234501234567890ABC04 /* AirPlayButtonFactory.swift */; };
 		AE00627F000DA13D3142CF98 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75ADD0A338CA4765EFDF888C /* Pods_Runner.framework */; };
+		B4ABEF82825ED748B9F3F7ED /* MuslyWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD3BECE5CFCCCB9B82D56C1 /* MuslyWidgets.swift */; };
+		C7E743D7E2FE6D041403EEBB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AABD10FF2AB4613E74FDC0A4 /* Foundation.framework */; };
+		E4DB9DE94A1C7B5F4553DF9F /* FavoriteControlShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D23AE316B0903F389D1FD12 /* FavoriteControlShared.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,9 +37,27 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
+		D85170D95D87E3B16343B598 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5C309770F2E899E14ECF512A;
+			remoteInfo = MuslyWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		7529890D35A1FF7A6DA36529 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				075711C3901D618C729B3A4A /* MuslyWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -54,11 +78,14 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		41A5C969FE507EAF829D8CC7 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		60623231CCAD0A0108BC057A /* MuslyWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MuslyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		75ADD0A338CA4765EFDF888C /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		845C87BF21E3848C638A09D5 /* FavoriteControlPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FavoriteControlPlugin.swift; sourceTree = "<group>"; };
+		8AD3BECE5CFCCCB9B82D56C1 /* MuslyWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MuslyWidgets.swift; sourceTree = "<group>"; };
 		970048330B3D21E8F22ED7A9 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -67,12 +94,17 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9D23AE316B0903F389D1FD12 /* FavoriteControlShared.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FavoriteControlShared.swift; sourceTree = "<group>"; };
 		AA01234501234567890ABC01 /* iOSSystemPlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = iOSSystemPlugin.swift; sourceTree = "<group>"; };
 		AA01234501234567890ABC02 /* iOSBluetoothPlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = iOSBluetoothPlugin.swift; sourceTree = "<group>"; };
 		AA01234501234567890ABC03 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		AA01234501234567890ABC04 /* AirPlayButtonFactory.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AirPlayButtonFactory.swift; sourceTree = "<group>"; };
+		AABD10FF2AB4613E74FDC0A4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		AD445EE6E5009EC04E5FA774 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BD54408F5B2D752377936346 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6C1C71185983A0DF490D326 /* MuslyWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = MuslyWidgets.entitlements; sourceTree = "<group>"; };
 		D47342808190297C0A22E655 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		D65CB1D93730B7E2EF06FFF3 /* MuslyWidgets.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = MuslyWidgets.xcconfig; sourceTree = "<group>"; };
 		E4097B6D6C9058F7E0E8B719 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		E462CEF13098A6E11F4E1105 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -83,6 +115,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				7B20921E9CF274364627C150 /* Pods_RunnerTests.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6AD8AA264F44F5D379184D92 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C7E743D7E2FE6D041403EEBB /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,6 +138,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		07F2267E77B5E37761C5E2B6 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				AABD10FF2AB4613E74FDC0A4 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -111,8 +159,21 @@
 			children = (
 				75ADD0A338CA4765EFDF888C /* Pods_Runner.framework */,
 				BD54408F5B2D752377936346 /* Pods_RunnerTests.framework */,
+				07F2267E77B5E37761C5E2B6 /* iOS */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		93C11B6024855765D3BB2030 /* MuslyWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				8AD3BECE5CFCCCB9B82D56C1 /* MuslyWidgets.swift */,
+				AD445EE6E5009EC04E5FA774 /* Info.plist */,
+				C6C1C71185983A0DF490D326 /* MuslyWidgets.entitlements */,
+				D65CB1D93730B7E2EF06FFF3 /* MuslyWidgets.xcconfig */,
+			);
+			name = MuslyWidgets;
+			path = MuslyWidgets;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
@@ -136,6 +197,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				9FF4B6A2654BAB8CCB063C55 /* Pods */,
 				5D4E487EC02C9B9E6FD11226 /* Frameworks */,
+				93C11B6024855765D3BB2030 /* MuslyWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -144,6 +206,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				60623231CCAD0A0108BC057A /* MuslyWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -163,6 +226,8 @@
 				AA01234501234567890ABC03 /* CarPlaySceneDelegate.swift */,
 				AA01234501234567890ABC04 /* AirPlayButtonFactory.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				9D23AE316B0903F389D1FD12 /* FavoriteControlShared.swift */,
+				845C87BF21E3848C638A09D5 /* FavoriteControlPlugin.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -202,6 +267,23 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		5C309770F2E899E14ECF512A /* MuslyWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 773707ACEE46F532275293A7 /* Build configuration list for PBXNativeTarget "MuslyWidgets" */;
+			buildPhases = (
+				67A997C15EEF120DB5868D02 /* Sources */,
+				6AD8AA264F44F5D379184D92 /* Frameworks */,
+				F36A114DC8183208519291BD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MuslyWidgets;
+			productName = MuslyWidgets;
+			productReference = 60623231CCAD0A0108BC057A /* MuslyWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -212,11 +294,13 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				7529890D35A1FF7A6DA36529 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CFA58121ACF83B24BF5B42BA /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -264,6 +348,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				5C309770F2E899E14ECF512A /* MuslyWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -284,6 +369,13 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F36A114DC8183208519291BD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -376,6 +468,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		67A997C15EEF120DB5868D02 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4ABEF82825ED748B9F3F7ED /* MuslyWidgets.swift in Sources */,
+				6C82CAC80BEA5B6672D13935 /* FavoriteControlShared.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EA1CF9000F007C117D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -386,6 +487,8 @@
 				AA01234501234567890ABCD3 /* CarPlaySceneDelegate.swift in Sources */,
 				AA01234501234567890ABCD4 /* AirPlayButtonFactory.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				E4DB9DE94A1C7B5F4553DF9F /* FavoriteControlShared.swift in Sources */,
+				761CAC18B3945BDCE4B5BE75 /* FavoriteControlPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -396,6 +499,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		CFA58121ACF83B24BF5B42BA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MuslyWidgets;
+			target = 5C309770F2E899E14ECF512A /* MuslyWidgets */;
+			targetProxy = D85170D95D87E3B16343B598 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -477,6 +586,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 9SGKYND28U;
 				ENABLE_BITCODE = NO;
@@ -490,6 +600,32 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Profile;
+		};
+		25AF8C7427D4CCE81A8DCE3F /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D65CB1D93730B7E2EF06FFF3 /* MuslyWidgets.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = MuslyWidgets/MuslyWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9SGKYND28U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MuslyWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kallewoof.musly.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Profile;
 		};
@@ -542,6 +678,32 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = Profile;
+		};
+		5C29DDAFE37B44D48BA26C19 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D65CB1D93730B7E2EF06FFF3 /* MuslyWidgets.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = MuslyWidgets/MuslyWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9SGKYND28U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MuslyWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kallewoof.musly.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -701,6 +863,31 @@
 			};
 			name = Release;
 		};
+		E376E96F1556D3B93F7713B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D65CB1D93730B7E2EF06FFF3 /* MuslyWidgets.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = MuslyWidgets/MuslyWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9SGKYND28U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MuslyWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kallewoof.musly.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -710,6 +897,16 @@
 				331C8088294A63A400263BE5 /* Debug */,
 				331C8089294A63A400263BE5 /* Release */,
 				331C808A294A63A400263BE5 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		773707ACEE46F532275293A7 /* Build configuration list for PBXNativeTarget "MuslyWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5C29DDAFE37B44D48BA26C19 /* Release */,
+				E376E96F1556D3B93F7713B8 /* Debug */,
+				25AF8C7427D4CCE81A8DCE3F /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

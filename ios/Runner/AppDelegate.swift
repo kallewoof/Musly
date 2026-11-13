@@ -24,6 +24,10 @@ import AVFoundation
         iOSBluetoothPlugin.register(with: bluetoothPluginRegistrar!)
       }
 
+      if let favoriteControlRegistrar = registrar(forPlugin: "FavoriteControlPlugin") {
+        FavoriteControlPlugin.register(with: favoriteControlRegistrar)
+      }
+
       // AirPlay button platform view
       let airPlayRegistrar = registrar(forPlugin: "AirPlayButtonFactory")
       if airPlayRegistrar != nil {

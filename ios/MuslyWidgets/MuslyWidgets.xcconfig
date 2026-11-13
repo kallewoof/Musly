@@ -1,0 +1,2 @@
+// The app's version numbers, without the app's CocoaPods settings, which an extension must not link.
+#include "../Flutter/Generated.xcconfig"
