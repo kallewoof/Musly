@@ -28,6 +28,12 @@ class Song {
   final DateTime? created;
   final bool? hasDolbyAtmos;
 
+  /// The user's listens as the server counts them, across all their devices: plays, and with the
+  /// unimousePlaybackOutcomes extension how they ended (skipped early, or heard to 90% or later).
+  final int? playCount;
+  final int? skipCount;
+  final int? completeCount;
+
   Song({
     required this.id,
     required this.title,
@@ -55,6 +61,9 @@ class Song {
     this.artistParticipants,
     this.created,
     this.hasDolbyAtmos,
+    this.playCount,
+    this.skipCount,
+    this.completeCount,
   });
 
   factory Song.fromJson(Map<String, dynamic> json) {
@@ -93,6 +102,9 @@ class Song {
       path: json['path']?.toString(),
       starred: json['starred'] != null,
       userRating: json['userRating'] as int?,
+      playCount: json['playCount'] as int?,
+      skipCount: json['skipCount'] as int?,
+      completeCount: json['completeCount'] as int?,
       isLocal: json['isLocal'] as bool? ?? false,
       replayGainTrackGain: parseGain(replayGain?['trackGain'] ??
           json['replayGainTrackGain'] ??
@@ -150,6 +162,9 @@ class Song {
       if (hasDolbyAtmos != null) 'hasDolbyAtmos': hasDolbyAtmos,
       // fromJson reads the server's starred timestamp as presence, so any value reads back as starred.
       if (starred == true) 'starred': true,
+      if (playCount != null) 'playCount': playCount,
+      if (skipCount != null) 'skipCount': skipCount,
+      if (completeCount != null) 'completeCount': completeCount,
     };
   }
 
@@ -187,6 +202,9 @@ class Song {
     List<ArtistRef>? artistParticipants,
     DateTime? created,
     bool? hasDolbyAtmos,
+    int? playCount,
+    int? skipCount,
+    int? completeCount,
   }) {
     return Song(
       id: id ?? this.id,
@@ -215,6 +233,9 @@ class Song {
       artistParticipants: artistParticipants ?? this.artistParticipants,
       created: created ?? this.created,
       hasDolbyAtmos: hasDolbyAtmos ?? this.hasDolbyAtmos,
+      playCount: playCount ?? this.playCount,
+      skipCount: skipCount ?? this.skipCount,
+      completeCount: completeCount ?? this.completeCount,
     );
   }
 }

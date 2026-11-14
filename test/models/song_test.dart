@@ -71,7 +71,9 @@ void main() {
       expect(json['track'], 5);
     });
 
-    test('should parse replayGain values from nested map with numbers or strings', () {
+    test(
+        'should parse replayGain values from nested map with numbers or strings',
+        () {
       final json = {
         'id': '123',
         'title': 'Test Song',
@@ -121,6 +123,22 @@ void main() {
       final song = Song(id: '1', title: 'T', starred: false);
 
       expect(Song.fromJson(song.toJson()).starred, isFalse);
+    });
+
+    // RD: the server's per-user counts are dropped when a song is parsed or saved with the queue, so the taste model never sees listens from other devices.
+    test('keeps the server\'s play, skip and completion counts', () {
+      final song = Song.fromJson({
+        'id': 's1',
+        'title': 'T',
+        'playCount': 7,
+        'skipCount': 2,
+        'completeCount': 5,
+      });
+      final again = Song.fromJson(song.toJson());
+
+      for (final s in [song, again]) {
+        expect([s.playCount, s.skipCount, s.completeCount], [7, 2, 5]);
+      }
     });
   });
 }

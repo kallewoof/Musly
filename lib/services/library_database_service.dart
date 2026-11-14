@@ -6,7 +6,7 @@ import '../models/models.dart';
 
 class LibraryDatabaseService {
   static const String _dbName = 'musly_library.db';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
   static const int _batchSize = 1000;
 
   Database? _db;
@@ -48,6 +48,11 @@ class LibraryDatabaseService {
             .execute('ALTER TABLE albums ADD COLUMN starred INTEGER DEFAULT 0');
       } catch (_) {}
     }
+    if (oldVersion < 4) {
+      for (final column in ['playCount', 'skipCount', 'completeCount']) {
+        await db.execute('ALTER TABLE songs ADD COLUMN $column INTEGER');
+      }
+    }
   }
 
   Future<void> _createSchema(Database db) async {
@@ -77,7 +82,10 @@ class LibraryDatabaseService {
         artistParticipants TEXT,
         created TEXT,
         starred INTEGER DEFAULT 0,
-        userRating INTEGER
+        userRating INTEGER,
+        playCount INTEGER,
+        skipCount INTEGER,
+        completeCount INTEGER
       )
     ''');
 
@@ -482,6 +490,9 @@ class LibraryDatabaseService {
       'created': song.created?.toIso8601String(),
       'starred': song.starred == true ? 1 : 0,
       'userRating': song.userRating,
+      'playCount': song.playCount,
+      'skipCount': song.skipCount,
+      'completeCount': song.completeCount,
     };
   }
 
@@ -517,6 +528,9 @@ class LibraryDatabaseService {
           : null,
       starred: (m['starred'] as int?) == 1,
       userRating: m['userRating'] as int?,
+      playCount: m['playCount'] as int?,
+      skipCount: m['skipCount'] as int?,
+      completeCount: m['completeCount'] as int?,
     );
   }
 

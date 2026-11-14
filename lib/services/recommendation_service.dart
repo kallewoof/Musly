@@ -292,15 +292,23 @@ class RecommendationService extends ChangeNotifier {
       }
     }
 
+    // The server's counts cover every device; this device's profile only its own listens.
+    final serverPlays = song.playCount ?? 0;
+    final plays = max(profile?.playCount ?? 0, serverPlays);
+    final completion = serverPlays > 0 && song.completeCount != null
+        ? (song.completeCount! / serverPlays).clamp(0.0, 1.0)
+        : profile?.completionRate;
+    if (completion != null) score += completion * _W.completionRate;
+    if (plays > 0) {
+      score += min(plays / 10.0, 1.0) * _W.playCountSignal;
+    } else {
+      score += _W.noveltyBonus;
+    }
     if (profile != null) {
-      score += profile.completionRate * _W.completionRate;
       score += profile.getHourPreference(hour) * _W.hourPreference;
-      score += min(profile.playCount / 10.0, 1.0) * _W.playCountSignal;
       if (profile.userRating != null) {
         score += (profile.userRating! / 5.0) * _W.userRating;
       }
-    } else {
-      score += _W.noveltyBonus;
     }
 
     if (song.userRating != null) {
@@ -311,7 +319,8 @@ class RecommendationService extends ChangeNotifier {
       score += _W.starBonus;
     }
 
-    final skips = _skipCounts[song.id] ?? 0;
+    // This device's skips are reported to the server too, so the larger count holds them all once.
+    final skips = max(_skipCounts[song.id] ?? 0, song.skipCount ?? 0);
     if (skips > 0) {
       score -= min(skips * _W.skipPenaltyPerSkip, _W.maxSkipPenalty);
     }
