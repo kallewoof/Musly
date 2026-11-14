@@ -52,4 +52,14 @@ void main() {
     expect(model.calculateSongScore(song(plays: 4, completes: 4)),
         greaterThan(model.calculateSongScore(song(plays: 4, completes: 0))));
   });
+
+  // RD: Smart Shuffle reads only the server's counts, which lag until the next library refresh, so a song skipped twice just now keeps coming back.
+  test('reports this device\'s skips before the server\'s count catches up',
+      () async {
+    final s = Song(id: 's9', title: 'T', skipCount: 1, completeCount: 2);
+    await model.trackSkip(s);
+    await model.trackSkip(s);
+
+    expect(model.listenOutcomes(s), (completes: 2, skips: 2));
+  });
 }

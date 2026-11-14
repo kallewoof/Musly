@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -163,6 +162,9 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get shuffle => 'Amestecă';
+
+  @override
+  String get smartShuffle => 'Smart Shuffle';
 
   @override
   String get repeat => 'Repetă';

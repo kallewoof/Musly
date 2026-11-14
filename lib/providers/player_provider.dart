@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' show Random;
+import 'dart:math' show Random, max;
 import 'dart:ui' show AppExitResponse;
 
 import 'package:audio_session/audio_session.dart';
@@ -31,6 +31,7 @@ import '../services/latest_value_writer.dart';
 import '../services/jukebox_service.dart';
 import '../services/play_queue_sync.dart';
 import '../services/audio_handler.dart';
+import '../services/smart_shuffle.dart';
 import '../services/fade_settings_service.dart';
 import '../services/crossfade_service.dart';
 
@@ -41,6 +42,9 @@ import '../providers/library_provider.dart';
 import '../services/android_auto_service.dart';
 
 enum RepeatMode { off, all, one }
+
+/// What keeps a queue going when it runs low.
+enum QueueRefill { none, radio, smartShuffle }
 
 class PlayerProvider extends ChangeNotifier
     with WidgetsBindingObserver
@@ -92,10 +96,21 @@ class PlayerProvider extends ChangeNotifier
 
   RadioStation? _currentRadioStation;
   bool _isPlayingRadio = false;
-  bool _isRadioQueue = false;
   bool _isRefillingQueue = false;
 
-  bool get isRadioQueue => _isRadioQueue;
+  /// What keeps the current queue going when it runs low. Set by the action that starts such a queue, and
+  /// cleared when any other queue replaces it.
+  QueueRefill _refill = QueueRefill.none;
+  bool get _isRadioQueue => _refill != QueueRefill.none;
+
+  bool get isRadioQueue => _refill == QueueRefill.radio;
+  bool get isSmartShuffle => _refill == QueueRefill.smartShuffle;
+
+  final SmartShuffle _smartShuffle = SmartShuffle();
+  static const _smartShuffleBatch = 10;
+
+  @visibleForTesting
+  set debugRefill(QueueRefill refill) => _refill = refill;
 
   bool _hasPlayedOnce = false;
 
@@ -431,6 +446,7 @@ class PlayerProvider extends ChangeNotifier
       await _audioPlayer.stop();
     } catch (_) {}
     _queue = remote.songs;
+    _refill = QueueRefill.none;
     _currentIndex = remote.currentIndex;
     _currentSong = remote.songs[remote.currentIndex];
     _position = remote.position;
@@ -1378,6 +1394,8 @@ class PlayerProvider extends ChangeNotifier
     try {
       if (shouldRefillAutoDj) {
         await _addAutoDjSongs();
+      } else if (shouldRefillRadio && _refill == QueueRefill.smartShuffle) {
+        await _appendToQueue(_smartShufflePicks(_smartShuffleBatch));
       } else if (shouldRefillRadio) {
         final seedSong = _queue.isNotEmpty ? _queue.last : _currentSong;
         if (seedSong != null) {
@@ -1424,8 +1442,8 @@ class PlayerProvider extends ChangeNotifier
   }
 
   Future<void> playSongWithRadio(Song song) async {
-    _isRadioQueue = true;
-    await playSong(song);
+    _refill = QueueRefill.radio;
+    await playSong(song, keepRefill: true);
 
     _fetchAndQueueRadioTracks(song).catchError((e) {
       debugPrint('[Player] _fetchAndQueueRadioTracks error: $e');
@@ -1503,12 +1521,17 @@ class PlayerProvider extends ChangeNotifier
   }
 
   @override
+  /// Plays [song], from [playlist] when given. [keepRefill] keeps a radio or Smart Shuffle going: for moves
+  /// within the current queue (a skip, a removal, a switch of output) and for the actions that start one.
+  /// Any other call starts a new queue and ends it.
   Future<void> playSong(
     Song song, {
     List<Song>? playlist,
     int? startIndex,
     Duration? initialPosition,
+    bool keepRefill = false,
   }) async {
+    if (!keepRefill) _refill = QueueRefill.none;
     if (_currentSong?.id == song.id && !_isPlayingRadio) {
       if (initialPosition != null && initialPosition > Duration.zero) {
         await seek(initialPosition);
@@ -1951,7 +1974,8 @@ class PlayerProvider extends ChangeNotifier
       notifyListeners();
       _updateAndroidAuto();
       if (_currentSong != null && _castService.mediaState.title == null) {
-        await playSong(_currentSong!, initialPosition: _position);
+        await playSong(_currentSong!,
+            initialPosition: _position, keepRefill: true);
       } else {
         await _castService.play();
       }
@@ -2273,28 +2297,65 @@ class PlayerProvider extends ChangeNotifier
       );
 
       if (songsToAdd.isNotEmpty) {
-        _queue.addAll(songsToAdd);
-        if (_concatenatingSource != null && !_isRenderingRemotely) {
-          for (final song in songsToAdd) {
-            try {
-              final source = await _buildAudioSourceForSong(song);
-              _concatenatingSource!.add(source);
-            } catch (e) {
-              debugPrint(
-                  'Error adding AutoDJ song to concatenating source: $e');
-            }
-          }
-        }
-        if (_upnpService.isConnected && _currentIndex + 1 < _queue.length) {
-          _queueNextSongForUpnp(_queue[_currentIndex + 1]).catchError((_) {});
-        }
-        notifyListeners();
-        _saveQueueState();
+        await _appendToQueue(songsToAdd);
         debugPrint('Auto DJ added ${songsToAdd.length} songs to queue');
       }
     } catch (e) {
       debugPrint('Auto DJ error: $e');
     }
+  }
+
+  /// Adds [songs] to the end of the queue, and to whatever plays it: the gapless source, or UPnP's next.
+  Future<void> _appendToQueue(List<Song> songs) async {
+    if (songs.isEmpty) return;
+    _queue.addAll(songs);
+    if (_concatenatingSource != null && !_isRenderingRemotely) {
+      for (final song in songs) {
+        try {
+          _concatenatingSource!.add(await _buildAudioSourceForSong(song));
+        } catch (e) {
+          debugPrint('Error adding ${song.id} to the gapless source: $e');
+        }
+      }
+    }
+    if (_upnpService.isConnected && _currentIndex + 1 < _queue.length) {
+      _queueNextSongForUpnp(_queue[_currentIndex + 1]).catchError((_) {});
+    }
+    notifyListeners();
+    _saveQueueState();
+  }
+
+  /// Starts Smart Shuffle: a queue picked from the library by what the user finishes and skips, mixed with
+  /// songs not heard yet, and topped up as it runs low.
+  Future<void> smartShuffle() async {
+    final picks = _smartShufflePicks(_smartShuffleBatch, startingQueue: true);
+    if (picks.isEmpty) return;
+    _refill = QueueRefill.smartShuffle;
+    await playSong(picks.first,
+        playlist: picks, startIndex: 0, keepRefill: true);
+  }
+
+  /// Picks that leave out songs played recently and, for a refill, the queue itself. A queue being replaced
+  /// is not left out: after a whole-library shuffle it holds every song.
+  List<Song> _smartShufflePicks(int count, {bool startingQueue = false}) {
+    final rec = _recommendationService;
+    return _smartShuffle.pick(
+      _libraryProvider?.cachedAllSongs ?? const [],
+      count,
+      exclude: {
+        if (!startingQueue) ..._queue.map((s) => s.id),
+        ...?rec?.recentlyPlayed.take(100),
+      },
+      outcomes: rec?.listenOutcomes ??
+          (s) => (completes: s.completeCount ?? 0, skips: s.skipCount ?? 0),
+      recentArtists: startingQueue
+          ? const []
+          : [
+              for (final s in _queue.skip(
+                  max(0, _queue.length - SmartShuffle.artistGap)))
+                s.artist
+            ],
+    );
   }
 
   Future<void> skipPrevious() async {
@@ -2350,7 +2411,8 @@ class PlayerProvider extends ChangeNotifier
       if (_concatenatingSource != null && !_isRenderingRemotely) {
         await _audioPlayer.seek(Duration.zero, index: index);
       } else {
-        await playSong(_queue[index], playlist: _queue, startIndex: index);
+        await playSong(_queue[index],
+            playlist: _queue, startIndex: index, keepRefill: true);
       }
       _checkAndRefillAutoQueue().catchError((_) {});
     }
@@ -2487,6 +2549,7 @@ class PlayerProvider extends ChangeNotifier
             _queue[_currentIndex],
             playlist: _queue,
             startIndex: _currentIndex,
+            keepRefill: true,
           );
         }
       }
@@ -3260,7 +3323,7 @@ class PlayerProvider extends ChangeNotifier
         final song = _currentSong!;
         final currentPos = _position;
         _currentSong = null;
-        playSong(song, initialPosition: currentPos);
+        playSong(song, initialPosition: currentPos, keepRefill: true);
       }
       return;
     }
@@ -3384,7 +3447,7 @@ class PlayerProvider extends ChangeNotifier
       if (_currentSong != null) {
         final song = _currentSong!;
         _currentSong = null;
-        playSong(song);
+        playSong(song, keepRefill: true);
       }
       return;
     }

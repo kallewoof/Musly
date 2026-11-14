@@ -206,6 +206,10 @@
   "@shuffle": {
     "description": "Shuffle button label"
   },
+  "smartShuffle": "Smart Shuffle",
+  "@smartShuffle": {
+    "description": "Button that plays a shuffle picked by what the user likes, mixed with songs not heard yet"
+  },
   "repeat": "Repeat",
   "@repeat": {
     "description": "Repeat button label"

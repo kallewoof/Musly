@@ -75,6 +75,19 @@ void main() {
     expect(player.position, const Duration(seconds: 61));
   });
 
+  // RD: adopting the other device's queue keeps this device's radio or Smart Shuffle, so the adopted queue is
+  // topped up with songs neither device chose.
+  test('adopting a remote queue ends a radio or Smart Shuffle running here',
+      () async {
+    player = await playerWith({});
+    player.debugRefill = QueueRefill.smartShuffle;
+    server.saveFromOtherDevice('Musly-ios-other', ['a', 'b', 'c'], 1, 61000);
+
+    expect(await player.adoptRemoteQueue(), isTrue);
+
+    expect(player.isSmartShuffle, isFalse);
+  });
+
   // RD: play() resumes the local queue without asking the server, so pressing play on the desktop ignores
   // where the phone stopped.
   test('play adopts the remote queue before resuming', () async {

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import 'smart_shuffle.dart';
 
 abstract class _W {
   static const double artistAffinity = 0.28;
@@ -342,6 +343,14 @@ class RecommendationService extends ChangeNotifier {
 
     return score.clamp(0.0, 1.0);
   }
+
+  /// A song's completions and skips: the server's count across devices, or this device's own when larger,
+  /// since the server's is only as fresh as the last library refresh.
+  ListenOutcomes listenOutcomes(Song song) => (
+        completes: max(song.completeCount ?? 0,
+            _profiles[song.id]?.completedPlays ?? 0),
+        skips: max(song.skipCount ?? 0, _skipCounts[song.id] ?? 0),
+      );
 
   List<Song> getPersonalizedFeed(List<Song> allSongs, {int limit = 50}) {
     if (!_enabled || allSongs.isEmpty) return allSongs.take(limit).toList();

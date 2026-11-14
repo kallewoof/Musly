@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -161,6 +160,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shuffle => '随机播放';
+
+  @override
+  String get smartShuffle => 'Smart Shuffle';
 
   @override
   String get repeat => '循环';

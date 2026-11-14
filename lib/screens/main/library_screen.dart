@@ -646,6 +646,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   const Icon(Icons.shuffle_rounded, size: 18),
                               label: Text(AppLocalizations.of(context)!.shuffle),
                             ),
+                          if (_selectedFilter == 'Songs' &&
+                              libraryProvider.cachedAllSongs.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => Provider.of<PlayerProvider>(
+                                      context,
+                                      listen: false)
+                                  .smartShuffle(),
+                              icon: const Icon(Icons.auto_awesome_rounded,
+                                  size: 18),
+                              label: Text(
+                                  AppLocalizations.of(context)!.smartShuffle),
+                            ),
                           IconButton(
                             icon: Icon(
                               _isGridView
