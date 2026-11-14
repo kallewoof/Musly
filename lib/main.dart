@@ -16,6 +16,7 @@ import 'models/server_config.dart';
 import 'services/services.dart';
 import 'services/audio_handler.dart';
 import 'services/favorite_control_service.dart';
+import 'services/playback_reporter.dart';
 import 'services/server_route_watcher.dart';
 import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
@@ -205,6 +206,7 @@ void main() async {
   if (!kIsWeb && Platform.isIOS) {
     FavoriteControlService(playerProvider).start();
   }
+  PlaybackReporter(playerProvider, subsonicService).start();
 
   final offlineServiceForAuto = OfflineService();
   final androidAutoService = AndroidAutoService(

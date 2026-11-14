@@ -1239,6 +1239,18 @@ class SubsonicService {
     await _request('scrobble', {'id': id, 'submission': submission.toString()});
   }
 
+  /// OpenSubsonic `reportPlayback`: where a listen to [id] stands ([state] is starting, playing, paused or
+  /// stopped). Plays are submitted by [scrobble], so the server is told not to count one from this report.
+  Future<void> reportPlayback(String id, String state, Duration position) async {
+    await _request('reportPlayback', {
+      'mediaId': id,
+      'mediaType': 'song',
+      'positionMs': position.inMilliseconds.toString(),
+      'state': state,
+      'ignoreScrobble': 'true',
+    });
+  }
+
   Future<Map<String, dynamic>?> getLyrics({
     String? artist,
     String? title,
