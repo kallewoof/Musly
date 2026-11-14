@@ -3822,5 +3822,227 @@
   "spotverlayDescription": "If you want a beautiful and lightweight \"Made for Musly\" overlay, you can use Spotverlay (https://github.com/dddevid/Spotverlay)",
   "@spotverlayDescription": {
     "description": "Message recommending Spotverlay desktop overlay for Musly"
+  },
+  "pickReasonWhy": "why?",
+  "@pickReasonWhy": {
+    "description": "Chip on Now Playing that opens why the current song was picked"
+  },
+  "pickReasonTitle": "Why this song",
+  "@pickReasonTitle": {
+    "description": "Title of the sheet explaining why the current song was picked"
+  },
+  "pickReasonArtist": "artist you play",
+  "@pickReasonArtist": {
+    "description": "Score part: how much the user plays this artist"
+  },
+  "pickReasonGenre": "genre you play",
+  "@pickReasonGenre": {
+    "description": "Score part: how much the user plays this genre"
+  },
+  "pickReasonAlbum": "album you play",
+  "@pickReasonAlbum": {
+    "description": "Score part: how much the user plays this album"
+  },
+  "pickReasonArtistRating": "artist you rate highly",
+  "@pickReasonArtistRating": {
+    "description": "Score part: the user's ratings of this artist"
+  },
+  "pickReasonGenreRating": "genre you rate highly",
+  "@pickReasonGenreRating": {
+    "description": "Score part: the user's ratings of this genre"
+  },
+  "pickReasonCompletion": "finish rate {percent}%",
+  "@pickReasonCompletion": {
+    "description": "Score part: share of plays heard to the end",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonPlays": "played {count}×",
+  "@pickReasonPlays": {
+    "description": "Score part: play count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonUnheard": "not heard yet",
+  "@pickReasonUnheard": {
+    "description": "Score part: bonus for a song never played"
+  },
+  "pickReasonHourOfDay": "you play it at this hour",
+  "@pickReasonHourOfDay": {
+    "description": "Score part: the song is played at this time of day"
+  },
+  "pickReasonProfileRating": "your rating {stars}/5",
+  "@pickReasonProfileRating": {
+    "description": "Score part: the rating this device recorded",
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonSongRating": "song rating {stars}/5",
+  "@pickReasonSongRating": {
+    "description": "Score part: the song's rating on the server",
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonStarred": "favourite",
+  "@pickReasonStarred": {
+    "description": "Score part: the song is a favourite"
+  },
+  "pickReasonSkips": "skipped {count}×",
+  "@pickReasonSkips": {
+    "description": "Score part: penalty for skips",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonRecentlyPlayed": "{count, plural, =1{the last song played} other{played {count} songs ago}}",
+  "@pickReasonRecentlyPlayed": {
+    "description": "Score part: penalty for a song played recently",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonGenreAtThisHour": "genre for this hour",
+  "@pickReasonGenreAtThisHour": {
+    "description": "Score part: the genre the user plays at this hour"
+  },
+  "pickReasonRandom": "random variety",
+  "@pickReasonRandom": {
+    "description": "Score part: the random amount that keeps mixes from repeating"
+  },
+  "pickReasonTotal": "ranked by",
+  "@pickReasonTotal": {
+    "description": "Label of the total a mix was ranked by"
+  },
+  "pickReasonCapped": "score capped at {value}",
+  "@pickReasonCapped": {
+    "description": "The parts add up beyond the 0 to 1 range the score is kept in",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonTopHit": "one of your most played: {count} plays on this device",
+  "@pickReasonTopHit": {
+    "description": "Why a song is in Your Top Hits",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonListenAgain": "you played it recently",
+  "@pickReasonListenAgain": {
+    "description": "Why a song is in Listen Again"
+  },
+  "pickReasonShuffleListens": "finished {completes}×, skipped {skips}×",
+  "@pickReasonShuffleListens": {
+    "description": "Smart Shuffle evidence: completions and skips",
+    "placeholders": {
+      "completes": {
+        "type": "int"
+      },
+      "skips": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonShuffleStar": "favourite: counts as {count} finishes",
+  "@pickReasonShuffleStar": {
+    "description": "Smart Shuffle evidence: a star",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonShuffleArtist": "artist's other songs: {percent}% good, worth {count} listens",
+  "@pickReasonShuffleArtist": {
+    "description": "Smart Shuffle evidence: the artist's record",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pickReasonShuffleNoArtist": "no artist: starts from 50%",
+  "@pickReasonShuffleNoArtist": {
+    "description": "Smart Shuffle evidence: a song without an artist"
+  },
+  "pickReasonShuffleDraw": "drew {draw} (typical {typical}); the highest draws play",
+  "@pickReasonShuffleDraw": {
+    "description": "Smart Shuffle: the value drawn for the song and the average draw",
+    "placeholders": {
+      "draw": {
+        "type": "String"
+      },
+      "typical": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonRadioSimilar": "similar to “{title}”, by the server",
+  "@pickReasonRadioSimilar": {
+    "description": "Radio: from the server's similar songs",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonRadioGenre": "random from the genre of “{title}”",
+  "@pickReasonRadioGenre": {
+    "description": "Radio fallback: random songs of the seed's genre",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonRadioArtistTop": "top songs of the artist of “{title}”",
+  "@pickReasonRadioArtistTop": {
+    "description": "Radio fallback: the artist's top songs",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonRadioArtistSearch": "found by searching for the artist of “{title}”",
+  "@pickReasonRadioArtistSearch": {
+    "description": "Radio fallback: a search for the artist",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonRadioRandom": "random: nothing similar to “{title}” was found",
+  "@pickReasonRadioRandom": {
+    "description": "Radio fallback: random songs",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }

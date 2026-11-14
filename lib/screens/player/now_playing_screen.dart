@@ -3,6 +3,7 @@ import 'package:musly/widgets/common/blurred_gradient_background.dart';
 import 'package:musly/widgets/now_playing/album_art_view.dart';
 import 'package:musly/widgets/now_playing/marquee_text.dart';
 import 'package:musly/widgets/now_playing/playback_controls.dart';
+import 'package:musly/widgets/now_playing/pick_reason_chip.dart';
 import 'package:musly/widgets/now_playing/playback_progress_slider.dart';
 import 'package:musly/widgets/now_playing/volume_slider.dart';
 import 'package:musly/widgets/now_playing/now_playing_bottom_actions.dart';
@@ -607,6 +608,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                     color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ),
+                if (provider.currentPickReason case final reason?)
+                  PickReasonChip(reason: reason),
               ],
             ),
           ),

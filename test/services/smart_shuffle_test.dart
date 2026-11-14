@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musly/models/pick_reason.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/services/smart_shuffle.dart';
 
@@ -128,5 +129,46 @@ void main() {
                 exclude: const {}, outcomes: (_) => (completes: 0, skips: 0))
             .length,
         5);
+  });
+
+  // RD: the draw kept for "why?" is not the one that ranked the pick, or its typical value comes from other parameters,
+  // so the shown numbers did not decide what played.
+  test('records the draw that ranked each pick and the evidence behind it', () {
+    final reasons = <String, PickReason>{};
+    final songs = [
+      song('loved', starred: true),
+      for (var i = 0; i < 9; i++) song('s$i'),
+    ];
+
+    final picked = SmartShuffle(random: Random(3)).pick(songs, 10,
+        exclude: const {},
+        outcomes: (s) => s.id == 'loved'
+            ? (completes: 6, skips: 1)
+            : (completes: 0, skips: 0),
+        reasons: reasons);
+
+    final draws = [for (final s in picked) (reasons[s.id] as ShufflePick).draw];
+    for (var i = 1; i < draws.length; i++) {
+      expect(draws[i], lessThanOrEqualTo(draws[i - 1]));
+    }
+    final loved = reasons['loved'] as ShufflePick;
+    expect((loved.completes, loved.skips, loved.starred), (6, 1, true));
+    expect(loved.artistMean, isNull);
+    // Beta(6 + 3 for the star + 1, 1 + 1): no artist, so the prior is 0.5 of 2 listens.
+    expect(loved.typical, closeTo(10 / 12, 1e-9));
+  });
+
+  // RD: the artist's record is computed but not kept, or kept with this song's own listens in it.
+  test('records the artist record a song started from', () {
+    final reasons = <String, PickReason>{};
+    SmartShuffle(random: Random(3)).pick(
+        [song('a', artist: 'X'), song('b', artist: 'X')], 2,
+        exclude: const {},
+        outcomes: (s) =>
+            s.id == 'a' ? (completes: 4, skips: 0) : (completes: 0, skips: 2),
+        reasons: reasons);
+
+    // b's artist record is a's: (4 + 1) / (4 + 0 + 2).
+    expect((reasons['b'] as ShufflePick).artistMean, closeTo(5 / 6, 1e-9));
   });
 }

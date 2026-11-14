@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/pick_reason.dart';
 import '../models/song.dart';
 
 /// How a user's listens to a song ended: heard through, or skipped early.
@@ -29,18 +30,21 @@ class SmartShuffle {
   static const int artistGap = 3;
 
   /// Up to [count] songs from [candidates], never one in [exclude]. [recentArtists] are the artists just
-  /// queued, newest last, so the gap holds across refills.
+  /// queued, newest last, so the gap holds across refills. Each pick's [ShufflePick] goes into [reasons].
   List<Song> pick(
     List<Song> candidates,
     int count, {
     required Set<String> exclude,
     required ListenOutcomes Function(Song) outcomes,
     List<String?> recentArtists = const [],
+    Map<String, PickReason>? reasons,
   }) {
+    final counts = <String, ListenOutcomes>{};
     final evidence = <String, ({double good, double bad})>{};
     final byArtist = <String, ({double good, double bad})>{};
     for (final song in candidates) {
       final o = outcomes(song);
+      counts[song.id] = o;
       final e = (
         good: o.completes + (song.starred == true ? starWeight : 0.0),
         bad: o.skips.toDouble()
@@ -53,7 +57,7 @@ class SmartShuffle {
       }
     }
 
-    final drawn = <(Song, double)>[];
+    final drawn = <(Song, ShufflePick)>[];
     for (final song in candidates) {
       if (exclude.contains(song.id)) continue;
       final e = evidence[song.id]!;
@@ -62,12 +66,22 @@ class SmartShuffle {
       final mean = a == null
           ? 0.5
           : (a.good - e.good + 1) / (a.good - e.good + a.bad - e.bad + 2);
+      final alpha = e.good + priorStrength * mean;
+      final beta = e.bad + priorStrength * (1 - mean);
+      final o = counts[song.id]!;
       drawn.add((
         song,
-        _beta(e.good + priorStrength * mean, e.bad + priorStrength * (1 - mean))
+        ShufflePick(
+          completes: o.completes,
+          skips: o.skips,
+          starred: song.starred == true,
+          artistMean: a == null ? null : mean,
+          draw: _beta(alpha, beta),
+          typical: alpha / (alpha + beta),
+        )
       ));
     }
-    drawn.sort((x, y) => y.$2.compareTo(x.$2));
+    drawn.sort((x, y) => y.$2.draw.compareTo(x.$2.draw));
 
     final picked = <Song>[];
     final taken = <String>{};
@@ -76,10 +90,11 @@ class SmartShuffle {
         s.artist == null ||
         !lastArtists.reversed.take(artistGap).contains(s.artist);
     for (final strict in [true, false]) {
-      for (final (song, _) in drawn) {
+      for (final (song, reason) in drawn) {
         if (picked.length >= count) return picked;
         if (taken.contains(song.id) || (strict && !spaced(song))) continue;
         picked.add(song);
+        reasons?[song.id] = reason;
         taken.add(song.id);
         lastArtists.add(song.artist);
       }

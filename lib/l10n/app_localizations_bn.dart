@@ -3144,4 +3144,140 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get spotverlayDescription =>
       'If you want a beautiful and lightweight \"Made for Musly\" overlay, you can use Spotverlay (https://github.com/dddevid/Spotverlay)';
+
+  @override
+  String get pickReasonWhy => 'why?';
+
+  @override
+  String get pickReasonTitle => 'Why this song';
+
+  @override
+  String get pickReasonArtist => 'artist you play';
+
+  @override
+  String get pickReasonGenre => 'genre you play';
+
+  @override
+  String get pickReasonAlbum => 'album you play';
+
+  @override
+  String get pickReasonArtistRating => 'artist you rate highly';
+
+  @override
+  String get pickReasonGenreRating => 'genre you rate highly';
+
+  @override
+  String pickReasonCompletion(int percent) {
+    return 'finish rate $percent%';
+  }
+
+  @override
+  String pickReasonPlays(int count) {
+    return 'played $count×';
+  }
+
+  @override
+  String get pickReasonUnheard => 'not heard yet';
+
+  @override
+  String get pickReasonHourOfDay => 'you play it at this hour';
+
+  @override
+  String pickReasonProfileRating(int stars) {
+    return 'your rating $stars/5';
+  }
+
+  @override
+  String pickReasonSongRating(int stars) {
+    return 'song rating $stars/5';
+  }
+
+  @override
+  String get pickReasonStarred => 'favourite';
+
+  @override
+  String pickReasonSkips(int count) {
+    return 'skipped $count×';
+  }
+
+  @override
+  String pickReasonRecentlyPlayed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'played $count songs ago',
+      one: 'the last song played',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pickReasonGenreAtThisHour => 'genre for this hour';
+
+  @override
+  String get pickReasonRandom => 'random variety';
+
+  @override
+  String get pickReasonTotal => 'ranked by';
+
+  @override
+  String pickReasonCapped(String value) {
+    return 'score capped at $value';
+  }
+
+  @override
+  String pickReasonTopHit(int count) {
+    return 'one of your most played: $count plays on this device';
+  }
+
+  @override
+  String get pickReasonListenAgain => 'you played it recently';
+
+  @override
+  String pickReasonShuffleListens(int completes, int skips) {
+    return 'finished $completes×, skipped $skips×';
+  }
+
+  @override
+  String pickReasonShuffleStar(int count) {
+    return 'favourite: counts as $count finishes';
+  }
+
+  @override
+  String pickReasonShuffleArtist(int percent, int count) {
+    return 'artist\'s other songs: $percent% good, worth $count listens';
+  }
+
+  @override
+  String get pickReasonShuffleNoArtist => 'no artist: starts from 50%';
+
+  @override
+  String pickReasonShuffleDraw(String draw, String typical) {
+    return 'drew $draw (typical $typical); the highest draws play';
+  }
+
+  @override
+  String pickReasonRadioSimilar(String title) {
+    return 'similar to “$title”, by the server';
+  }
+
+  @override
+  String pickReasonRadioGenre(String title) {
+    return 'random from the genre of “$title”';
+  }
+
+  @override
+  String pickReasonRadioArtistTop(String title) {
+    return 'top songs of the artist of “$title”';
+  }
+
+  @override
+  String pickReasonRadioArtistSearch(String title) {
+    return 'found by searching for the artist of “$title”';
+  }
+
+  @override
+  String pickReasonRadioRandom(String title) {
+    return 'random: nothing similar to “$title” was found';
+  }
 }

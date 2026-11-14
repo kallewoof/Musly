@@ -52,6 +52,10 @@ class RecommendationService extends ChangeNotifier {
 
   final Map<String, int> _recentIndex = {};
 
+  /// Why each song of a returned list is in it, kept with the list, since the same song can be in several
+  /// mixes for different reasons (the jitter is drawn per mix).
+  final Expando<Map<String, PickReason>> _reasons = Expando();
+
   DateTime _lastDecayApplied = DateTime.fromMillisecondsSinceEpoch(0);
 
   Timer? _saveTimer;
@@ -241,8 +245,20 @@ class RecommendationService extends ChangeNotifier {
 
   double calculateSongScore(Song song, {int? currentHour}) {
     if (!_enabled) return 0.0;
+    return scoreTerms(song, currentHour: currentHour)
+        .fold(0.0, (sum, t) => sum + t.value)
+        .clamp(0.0, 1.0);
+  }
 
-    double score = 0.0;
+  /// The parts of [calculateSongScore], each with what it added. Parts that added nothing are left out.
+  List<ScoreTerm> scoreTerms(Song song, {int? currentHour}) {
+    if (!_enabled) return const [];
+
+    final terms = <ScoreTerm>[];
+    void add(ScoreFactor factor, double value, [num? count]) {
+      if (value != 0) terms.add(ScoreTerm(factor, value, count));
+    }
+
     final profile = _profiles[song.id];
     final hour = currentHour ?? DateTime.now().hour;
 
@@ -250,8 +266,10 @@ class RecommendationService extends ChangeNotifier {
       final maxA = _cachedMax(_artistAffinity, () => _maxArtistAffinity,
           (v) => _maxArtistAffinity = v);
       if (maxA > 0) {
-        score += ((_artistAffinity[song.artist] ?? 0).clamp(0, maxA) / maxA) *
-            _W.artistAffinity;
+        add(
+            ScoreFactor.artist,
+            ((_artistAffinity[song.artist] ?? 0).clamp(0, maxA) / maxA) *
+                _W.artistAffinity);
       }
     }
 
@@ -259,8 +277,10 @@ class RecommendationService extends ChangeNotifier {
       final maxG = _cachedMax(_genreAffinity, () => _maxGenreAffinity,
           (v) => _maxGenreAffinity = v);
       if (maxG > 0) {
-        score += ((_genreAffinity[song.genre] ?? 0).clamp(0, maxG) / maxG) *
-            _W.genreAffinity;
+        add(
+            ScoreFactor.genre,
+            ((_genreAffinity[song.genre] ?? 0).clamp(0, maxG) / maxG) *
+                _W.genreAffinity);
       }
     }
 
@@ -268,8 +288,10 @@ class RecommendationService extends ChangeNotifier {
       final maxAl = _cachedMax(_albumAffinity, () => _maxAlbumAffinity,
           (v) => _maxAlbumAffinity = v);
       if (maxAl > 0) {
-        score += ((_albumAffinity[song.albumId] ?? 0).clamp(0, maxAl) / maxAl) *
-            _W.albumAffinity;
+        add(
+            ScoreFactor.album,
+            ((_albumAffinity[song.albumId] ?? 0).clamp(0, maxAl) / maxAl) *
+                _W.albumAffinity);
       }
     }
 
@@ -277,9 +299,11 @@ class RecommendationService extends ChangeNotifier {
       final maxAr = _cachedMax(_artistRatingAffinity, () => _maxArtistRating,
           (v) => _maxArtistRating = v);
       if (maxAr > 0) {
-        score += ((_artistRatingAffinity[song.artist] ?? 0).clamp(0, maxAr) /
-                maxAr) *
-            _W.artistRating;
+        add(
+            ScoreFactor.artistRating,
+            ((_artistRatingAffinity[song.artist] ?? 0).clamp(0, maxAr) /
+                    maxAr) *
+                _W.artistRating);
       }
     }
 
@@ -287,9 +311,10 @@ class RecommendationService extends ChangeNotifier {
       final maxGr = _cachedMax(_genreRatingAffinity, () => _maxGenreRating,
           (v) => _maxGenreRating = v);
       if (maxGr > 0) {
-        score +=
+        add(
+            ScoreFactor.genreRating,
             ((_genreRatingAffinity[song.genre] ?? 0).clamp(0, maxGr) / maxGr) *
-                _W.genreRating;
+                _W.genreRating);
       }
     }
 
@@ -299,36 +324,45 @@ class RecommendationService extends ChangeNotifier {
     final completion = serverPlays > 0 && song.completeCount != null
         ? (song.completeCount! / serverPlays).clamp(0.0, 1.0)
         : profile?.completionRate;
-    if (completion != null) score += completion * _W.completionRate;
+    if (completion != null) {
+      add(ScoreFactor.completion, completion * _W.completionRate,
+          (completion * 100).round());
+    }
     if (plays > 0) {
-      score += min(plays / 10.0, 1.0) * _W.playCountSignal;
+      add(ScoreFactor.plays, min(plays / 10.0, 1.0) * _W.playCountSignal,
+          plays);
     } else {
-      score += _W.noveltyBonus;
+      add(ScoreFactor.unheard, _W.noveltyBonus);
     }
     if (profile != null) {
-      score += profile.getHourPreference(hour) * _W.hourPreference;
+      add(ScoreFactor.hourOfDay,
+          profile.getHourPreference(hour) * _W.hourPreference);
       if (profile.userRating != null) {
-        score += (profile.userRating! / 5.0) * _W.userRating;
+        add(ScoreFactor.profileRating,
+            (profile.userRating! / 5.0) * _W.userRating, profile.userRating);
       }
     }
 
     if (song.userRating != null) {
-      score += (song.userRating! / 5.0) * _W.songLevelRating;
+      add(ScoreFactor.songRating, (song.userRating! / 5.0) * _W.songLevelRating,
+          song.userRating);
     }
 
     if (_starredSongs.contains(song.id) || song.starred == true) {
-      score += _W.starBonus;
+      add(ScoreFactor.starred, _W.starBonus);
     }
 
     // This device's skips are reported to the server too, so the larger count holds them all once.
     final skips = max(_skipCounts[song.id] ?? 0, song.skipCount ?? 0);
     if (skips > 0) {
-      score -= min(skips * _W.skipPenaltyPerSkip, _W.maxSkipPenalty);
+      add(ScoreFactor.skips,
+          -min(skips * _W.skipPenaltyPerSkip, _W.maxSkipPenalty), skips);
     }
 
     final recentIdx = _recentIndex[song.id];
     if (recentIdx != null && recentIdx < 20) {
-      score -= (20 - recentIdx) * _W.recencyPenaltyStep;
+      add(ScoreFactor.recentlyPlayed, -(20 - recentIdx) * _W.recencyPenaltyStep,
+          recentIdx + 1);
     }
 
     if (song.genre != null) {
@@ -336,21 +370,26 @@ class RecommendationService extends ChangeNotifier {
       if (hourMap != null && hourMap.isNotEmpty) {
         final maxHg = hourMap.values.reduce(max);
         if (maxHg > 0) {
-          score += ((hourMap[song.genre] ?? 0) / maxHg) * _W.timePatternsBonus;
+          add(ScoreFactor.genreAtThisHour,
+              ((hourMap[song.genre] ?? 0) / maxHg) * _W.timePatternsBonus);
         }
       }
     }
 
-    return score.clamp(0.0, 1.0);
+    return terms;
   }
 
   /// A song's completions and skips: the server's count across devices, or this device's own when larger,
   /// since the server's is only as fresh as the last library refresh.
   ListenOutcomes listenOutcomes(Song song) => (
-        completes: max(song.completeCount ?? 0,
-            _profiles[song.id]?.completedPlays ?? 0),
+        completes: max(
+            song.completeCount ?? 0, _profiles[song.id]?.completedPlays ?? 0),
         skips: max(song.skipCount ?? 0, _skipCounts[song.id] ?? 0),
       );
+
+  /// Why each song of [list] is in it, for a list this service returned; empty for any other list.
+  Map<String, PickReason> reasonsFor(List<Song> list) =>
+      _reasons[list] ?? const {};
 
   List<Song> getPersonalizedFeed(List<Song> allSongs, {int limit = 50}) {
     if (!_enabled || allSongs.isEmpty) return allSongs.take(limit).toList();
@@ -371,6 +410,9 @@ class RecommendationService extends ChangeNotifier {
         if (results.length >= limit) break;
       }
     }
+    _reasons[results] = {
+      for (final s in results) s.id: const ListenAgainPick()
+    };
     return results;
   }
 
@@ -394,7 +436,11 @@ class RecommendationService extends ChangeNotifier {
       return (calculateSongScore(b)).compareTo(calculateSongScore(a));
     });
 
-    return candidates.take(limit).toList();
+    final hits = candidates.take(limit).toList();
+    _reasons[hits] = {
+      for (final s in hits) s.id: TopHitPick(_profiles[s.id]?.playCount ?? 0)
+    };
+    return hits;
   }
 
   List<Song> getQuickPicks(List<Song> allSongs, {int limit = 20}) {
@@ -594,15 +640,18 @@ class RecommendationService extends ChangeNotifier {
     if (songs.isEmpty) return [];
     final rnd = jitter > 0 ? Random() : null;
     final hour = DateTime.now().hour;
-    return (songs.map((s) {
-      final base = calculateSongScore(s, currentHour: hour);
+    final ranked = songs.map((s) {
       final j = rnd != null ? rnd.nextDouble() * jitter : 0.0;
-      return MapEntry(s, base + j);
+      return (
+        song: s,
+        reason: ScoredPick(terms: scoreTerms(s, currentHour: hour), jitter: j)
+      );
     }).toList()
-          ..sort((a, b) => b.value.compareTo(a.value)))
-        .take(limit)
-        .map((e) => e.key)
-        .toList();
+      ..sort((a, b) => b.reason.total.compareTo(a.reason.total));
+    final top = ranked.take(limit).toList();
+    final result = [for (final r in top) r.song];
+    _reasons[result] = {for (final r in top) r.song.id: r.reason};
+    return result;
   }
 
   double _cachedMax(

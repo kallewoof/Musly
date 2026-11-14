@@ -109,6 +109,12 @@ class PlayerProvider extends ChangeNotifier
   final SmartShuffle _smartShuffle = SmartShuffle();
   static const _smartShuffleBatch = 10;
 
+  /// Why the songs of the current queue are in it, by song id, for the queues an algorithm picked.
+  Map<String, PickReason> _pickReasons = {};
+
+  PickReason? get currentPickReason =>
+      _currentSong == null ? null : _pickReasons[_currentSong!.id];
+
   @visibleForTesting
   set debugRefill(QueueRefill refill) => _refill = refill;
 
@@ -447,6 +453,7 @@ class PlayerProvider extends ChangeNotifier
     } catch (_) {}
     _queue = remote.songs;
     _refill = QueueRefill.none;
+    _pickReasons = {};
     _currentIndex = remote.currentIndex;
     _currentSong = remote.songs[remote.currentIndex];
     _position = remote.position;
@@ -1395,7 +1402,8 @@ class PlayerProvider extends ChangeNotifier
       if (shouldRefillAutoDj) {
         await _addAutoDjSongs();
       } else if (shouldRefillRadio && _refill == QueueRefill.smartShuffle) {
-        await _appendToQueue(_smartShufflePicks(_smartShuffleBatch));
+        await _appendToQueue(
+            _smartShufflePicks(_smartShuffleBatch, reasons: _pickReasons));
       } else if (shouldRefillRadio) {
         final seedSong = _queue.isNotEmpty ? _queue.last : _currentSong;
         if (seedSong != null) {
@@ -1443,6 +1451,7 @@ class PlayerProvider extends ChangeNotifier
 
   Future<void> playSongWithRadio(Song song) async {
     _refill = QueueRefill.radio;
+    _pickReasons = {};
     await playSong(song, keepRefill: true);
 
     _fetchAndQueueRadioTracks(song).catchError((e) {
@@ -1454,6 +1463,7 @@ class PlayerProvider extends ChangeNotifier
       {bool isRefill = false}) async {
     if (!isRefill && _currentSong?.id != song.id) return;
     try {
+      var source = RadioSource.similar;
       List<Song> similar =
           await _subsonicService.getSimilarSongs(song.id, count: 25);
 
@@ -1463,6 +1473,7 @@ class PlayerProvider extends ChangeNotifier
         try {
           similar = await _subsonicService.getRandomSongs(
               size: 25, genre: song.genre!.trim());
+          source = RadioSource.genre;
         } catch (_) {}
       }
 
@@ -1472,6 +1483,7 @@ class PlayerProvider extends ChangeNotifier
         try {
           similar = await _subsonicService.getArtistTopSongs(song.artistId!,
               count: 25);
+          source = RadioSource.artistTopSongs;
         } catch (_) {}
       }
       if (similar.isEmpty &&
@@ -1480,12 +1492,14 @@ class PlayerProvider extends ChangeNotifier
         try {
           final res = await _subsonicService.search(song.artist!);
           similar = res.songs.where((s) => s.id != song.id).toList();
+          source = RadioSource.artistSearch;
         } catch (_) {}
       }
 
       if (similar.isEmpty) {
         try {
           similar = await _subsonicService.getRandomSongs(size: 25);
+          source = RadioSource.random;
         } catch (_) {}
       }
 
@@ -1495,6 +1509,10 @@ class PlayerProvider extends ChangeNotifier
             similar.where((s) => !existingIds.contains(s.id)).toList();
         if (toAdd.isNotEmpty) {
           _queue.addAll(toAdd);
+          for (final s in toAdd) {
+            _pickReasons[s.id] =
+                RadioPick(seedTitle: song.title, source: source);
+          }
           if (_concatenatingSource != null && !_isRenderingRemotely) {
             for (final s in toAdd) {
               try {
@@ -1521,17 +1539,22 @@ class PlayerProvider extends ChangeNotifier
   }
 
   @override
+
   /// Plays [song], from [playlist] when given. [keepRefill] keeps a radio or Smart Shuffle going: for moves
   /// within the current queue (a skip, a removal, a switch of output) and for the actions that start one.
-  /// Any other call starts a new queue and ends it.
+  /// Any other call starts a new queue and ends it, with [reasons] saying why its songs were picked.
   Future<void> playSong(
     Song song, {
     List<Song>? playlist,
     int? startIndex,
     Duration? initialPosition,
     bool keepRefill = false,
+    Map<String, PickReason>? reasons,
   }) async {
-    if (!keepRefill) _refill = QueueRefill.none;
+    if (!keepRefill) {
+      _refill = QueueRefill.none;
+      _pickReasons = {...?reasons};
+    }
     if (_currentSong?.id == song.id && !_isPlayingRadio) {
       if (initialPosition != null && initialPosition > Duration.zero) {
         await seek(initialPosition);
@@ -2328,16 +2351,20 @@ class PlayerProvider extends ChangeNotifier
   /// Starts Smart Shuffle: a queue picked from the library by what the user finishes and skips, mixed with
   /// songs not heard yet, and topped up as it runs low.
   Future<void> smartShuffle() async {
-    final picks = _smartShufflePicks(_smartShuffleBatch, startingQueue: true);
+    final reasons = <String, PickReason>{};
+    final picks = _smartShufflePicks(_smartShuffleBatch,
+        startingQueue: true, reasons: reasons);
     if (picks.isEmpty) return;
     _refill = QueueRefill.smartShuffle;
+    _pickReasons = reasons;
     await playSong(picks.first,
         playlist: picks, startIndex: 0, keepRefill: true);
   }
 
   /// Picks that leave out songs played recently and, for a refill, the queue itself. A queue being replaced
   /// is not left out: after a whole-library shuffle it holds every song.
-  List<Song> _smartShufflePicks(int count, {bool startingQueue = false}) {
+  List<Song> _smartShufflePicks(int count,
+      {bool startingQueue = false, Map<String, PickReason>? reasons}) {
     final rec = _recommendationService;
     return _smartShuffle.pick(
       _libraryProvider?.cachedAllSongs ?? const [],
@@ -2351,10 +2378,11 @@ class PlayerProvider extends ChangeNotifier
       recentArtists: startingQueue
           ? const []
           : [
-              for (final s in _queue.skip(
-                  max(0, _queue.length - SmartShuffle.artistGap)))
+              for (final s in _queue
+                  .skip(max(0, _queue.length - SmartShuffle.artistGap)))
                 s.artist
             ],
+      reasons: reasons,
     );
   }
 

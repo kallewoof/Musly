@@ -16,6 +16,10 @@ class FakeQueueServer {
   Map<String, dynamic>? queue;
   var _clock = 0;
 
+  /// The song ids getSimilarSongs2 and getRandomSongs answer with.
+  List<String> similarIds = const [];
+  List<String> randomIds = const [];
+
   int get port => _server.port;
 
   Future<void> start() async {
@@ -81,6 +85,18 @@ class FakeQueueServer {
             'versions': [1]
           },
       ];
+    } else if (req.uri.path.endsWith('/getSimilarSongs2')) {
+      response['similarSongs2'] = {
+        'song': [
+          for (final id in similarIds) {'id': id, 'title': 'T-$id'}
+        ]
+      };
+    } else if (req.uri.path.endsWith('/getRandomSongs')) {
+      response['randomSongs'] = {
+        'song': [
+          for (final id in randomIds) {'id': id, 'title': 'T-$id'}
+        ]
+      };
     } else if (req.uri.path.endsWith('/getPlayQueueByIndex')) {
       gets++;
       await Future<void>.delayed(getDelay);

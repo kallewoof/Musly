@@ -36,6 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Song> _cachedPersonalized = const [];
   List<Song> _cachedListenAgain = const [];
   List<Song> _cachedTopHits = const [];
+
+  /// Why each song is in each section, by section title, then song id: the same song can be in two sections
+  /// for different reasons.
+  Map<String, Map<String, PickReason>> _cachedReasons = const {};
   String _lastRandomKey = '';
   String _selectedCategory = 'All';
 
@@ -200,6 +204,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           .getListenAgain(allSongs, limit: 10);
                       _cachedTopHits =
                           recommendationService.getTopHits(allSongs, limit: 10);
+                      _cachedReasons = {
+                        for (final mix in _cachedMixes.entries)
+                          mix.key: recommendationService.reasonsFor(mix.value),
+                        'Made For You': recommendationService
+                            .reasonsFor(_cachedPersonalized),
+                        'Listen Again': recommendationService
+                            .reasonsFor(_cachedListenAgain),
+                        'Your Top Hits':
+                            recommendationService.reasonsFor(_cachedTopHits),
+                      };
                       _lastRandomKey = key;
                     }
                   } else {
@@ -207,6 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _cachedPersonalized = const [];
                     _cachedListenAgain = const [];
                     _cachedTopHits = const [];
+                    _cachedReasons = const {};
                     _lastRandomKey = '';
                   }
 
@@ -554,12 +569,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       imageUrl: firstCover,
                       onTap: () {
                         if (songs.isNotEmpty) {
-                          _playSong(context, songs.first, songs);
+                          _playSong(context, songs.first, songs,
+                              section: entry.key);
                         }
                       },
                       onPlayPressed: () {
                         if (songs.isNotEmpty) {
-                          _playSong(context, songs.first, songs);
+                          _playSong(context, songs.first, songs,
+                              section: entry.key);
                         }
                       },
                     ),
@@ -592,8 +609,8 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: song.artist,
           coverArt: song.coverArt,
           size: cardSize,
-          onTap: () => _playSong(context, song, songs),
-          onPlayPressed: () => _playSong(context, song, songs),
+          onTap: () => _playSong(context, song, songs, section: title),
+          onPlayPressed: () => _playSong(context, song, songs, section: title),
         );
       }).toList(),
     );
@@ -645,12 +662,15 @@ class _HomeScreenState extends State<HomeScreen> {
   static DateTime _lastUpdate(Playlist playlist) =>
       playlist.changed ?? playlist.created ?? _epoch;
 
-  Future<void> _playSong(
-      BuildContext context, Song song, List<Song> queue) async {
+  /// Plays [song] from [queue]; [section] is the home section it came from, whose reasons go with it.
+  Future<void> _playSong(BuildContext context, Song song, List<Song> queue,
+      {String? section}) async {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final idx = queue.indexOf(song);
     await playerProvider.playSong(song,
-        playlist: queue, startIndex: idx >= 0 ? idx : 0);
+        playlist: queue,
+        startIndex: idx >= 0 ? idx : 0,
+        reasons: _cachedReasons[section]);
   }
 
   Future<void> _playAlbum(BuildContext context, String albumId) async {
@@ -914,4 +934,3 @@ class _FavoritePlaylistRowState extends State<_FavoritePlaylistRow> {
     );
   }
 }
-

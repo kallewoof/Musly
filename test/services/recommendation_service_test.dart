@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musly/models/pick_reason.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/services/recommendation_service.dart';
 
@@ -61,5 +62,72 @@ void main() {
     await model.trackSkip(s);
 
     expect(model.listenOutcomes(s), (completes: 2, skips: 2));
+  });
+
+  // RD: a part is added to the score but left out of its breakdown (or entered with another value), so "why?" lists
+  // parts that do not add up to what ranked the song.
+  test('breaks a score into parts that add up to it', () {
+    final s = Song(
+        id: 's2',
+        title: 'T',
+        starred: true,
+        userRating: 4,
+        playCount: 4,
+        completeCount: 3,
+        skipCount: 2);
+
+    final terms = model.scoreTerms(s);
+    final sum = terms.fold(0.0, (sum, t) => sum + t.value);
+
+    expect(sum, closeTo(model.calculateSongScore(s), 1e-9));
+    expect(sum, inExclusiveRange(0, 1), reason: 'clear of the clamp');
+  });
+
+  // RD: a part is filed under another factor or with another input, so "why?" blames the skips on the play count.
+  test('names each part with the input behind it', () {
+    final terms = {
+      for (final t in model.scoreTerms(Song(
+          id: 's3',
+          title: 'T',
+          starred: true,
+          playCount: 4,
+          completeCount: 3,
+          skipCount: 2)))
+        t.factor: t
+    };
+
+    expect(terms[ScoreFactor.skips]?.count, 2);
+    expect(terms[ScoreFactor.skips]!.value, isNegative);
+    expect(terms[ScoreFactor.plays]?.count, 4);
+    expect(terms[ScoreFactor.completion]?.count, 75);
+    expect(terms[ScoreFactor.starred]!.value, isPositive);
+    expect(terms.containsKey(ScoreFactor.unheard), isFalse);
+  });
+
+  // RD: the reasons kept for a mix are not the numbers it was ranked by (recomputed, or shared between mixes so one
+  // mix's random part overwrites another's), so the totals shown contradict the mix's order.
+  test('keeps, for each mix, the numbers that ranked it', () {
+    final songs = [
+      for (var i = 0; i < 12; i++)
+        Song(
+            id: 'm$i',
+            title: 'T$i',
+            starred: i.isEven,
+            playCount: i,
+            skipCount: i % 3)
+    ];
+
+    final first = model.getPersonalizedFeed(songs, limit: 12);
+    final second = model.getPersonalizedFeed(songs, limit: 12);
+
+    for (final mix in [first, second]) {
+      final reasons = model.reasonsFor(mix);
+      final totals = [for (final s in mix) (reasons[s.id] as ScoredPick).total];
+      for (var i = 1; i < totals.length; i++) {
+        expect(totals[i], lessThanOrEqualTo(totals[i - 1]));
+      }
+    }
+    expect(model.reasonsFor(List.of(first)), isEmpty,
+        reason: 'only the list the service returned');
   });
 }

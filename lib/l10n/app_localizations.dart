@@ -5817,6 +5817,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'If you want a beautiful and lightweight \"Made for Musly\" overlay, you can use Spotverlay (https://github.com/dddevid/Spotverlay)'**
   String get spotverlayDescription;
+
+  /// Chip on Now Playing that opens why the current song was picked
+  ///
+  /// In en, this message translates to:
+  /// **'why?'**
+  String get pickReasonWhy;
+
+  /// Title of the sheet explaining why the current song was picked
+  ///
+  /// In en, this message translates to:
+  /// **'Why this song'**
+  String get pickReasonTitle;
+
+  /// Score part: how much the user plays this artist
+  ///
+  /// In en, this message translates to:
+  /// **'artist you play'**
+  String get pickReasonArtist;
+
+  /// Score part: how much the user plays this genre
+  ///
+  /// In en, this message translates to:
+  /// **'genre you play'**
+  String get pickReasonGenre;
+
+  /// Score part: how much the user plays this album
+  ///
+  /// In en, this message translates to:
+  /// **'album you play'**
+  String get pickReasonAlbum;
+
+  /// Score part: the user's ratings of this artist
+  ///
+  /// In en, this message translates to:
+  /// **'artist you rate highly'**
+  String get pickReasonArtistRating;
+
+  /// Score part: the user's ratings of this genre
+  ///
+  /// In en, this message translates to:
+  /// **'genre you rate highly'**
+  String get pickReasonGenreRating;
+
+  /// Score part: share of plays heard to the end
+  ///
+  /// In en, this message translates to:
+  /// **'finish rate {percent}%'**
+  String pickReasonCompletion(int percent);
+
+  /// Score part: play count
+  ///
+  /// In en, this message translates to:
+  /// **'played {count}×'**
+  String pickReasonPlays(int count);
+
+  /// Score part: bonus for a song never played
+  ///
+  /// In en, this message translates to:
+  /// **'not heard yet'**
+  String get pickReasonUnheard;
+
+  /// Score part: the song is played at this time of day
+  ///
+  /// In en, this message translates to:
+  /// **'you play it at this hour'**
+  String get pickReasonHourOfDay;
+
+  /// Score part: the rating this device recorded
+  ///
+  /// In en, this message translates to:
+  /// **'your rating {stars}/5'**
+  String pickReasonProfileRating(int stars);
+
+  /// Score part: the song's rating on the server
+  ///
+  /// In en, this message translates to:
+  /// **'song rating {stars}/5'**
+  String pickReasonSongRating(int stars);
+
+  /// Score part: the song is a favourite
+  ///
+  /// In en, this message translates to:
+  /// **'favourite'**
+  String get pickReasonStarred;
+
+  /// Score part: penalty for skips
+  ///
+  /// In en, this message translates to:
+  /// **'skipped {count}×'**
+  String pickReasonSkips(int count);
+
+  /// Score part: penalty for a song played recently
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{the last song played} other{played {count} songs ago}}'**
+  String pickReasonRecentlyPlayed(int count);
+
+  /// Score part: the genre the user plays at this hour
+  ///
+  /// In en, this message translates to:
+  /// **'genre for this hour'**
+  String get pickReasonGenreAtThisHour;
+
+  /// Score part: the random amount that keeps mixes from repeating
+  ///
+  /// In en, this message translates to:
+  /// **'random variety'**
+  String get pickReasonRandom;
+
+  /// Label of the total a mix was ranked by
+  ///
+  /// In en, this message translates to:
+  /// **'ranked by'**
+  String get pickReasonTotal;
+
+  /// The parts add up beyond the 0 to 1 range the score is kept in
+  ///
+  /// In en, this message translates to:
+  /// **'score capped at {value}'**
+  String pickReasonCapped(String value);
+
+  /// Why a song is in Your Top Hits
+  ///
+  /// In en, this message translates to:
+  /// **'one of your most played: {count} plays on this device'**
+  String pickReasonTopHit(int count);
+
+  /// Why a song is in Listen Again
+  ///
+  /// In en, this message translates to:
+  /// **'you played it recently'**
+  String get pickReasonListenAgain;
+
+  /// Smart Shuffle evidence: completions and skips
+  ///
+  /// In en, this message translates to:
+  /// **'finished {completes}×, skipped {skips}×'**
+  String pickReasonShuffleListens(int completes, int skips);
+
+  /// Smart Shuffle evidence: a star
+  ///
+  /// In en, this message translates to:
+  /// **'favourite: counts as {count} finishes'**
+  String pickReasonShuffleStar(int count);
+
+  /// Smart Shuffle evidence: the artist's record
+  ///
+  /// In en, this message translates to:
+  /// **'artist\'s other songs: {percent}% good, worth {count} listens'**
+  String pickReasonShuffleArtist(int percent, int count);
+
+  /// Smart Shuffle evidence: a song without an artist
+  ///
+  /// In en, this message translates to:
+  /// **'no artist: starts from 50%'**
+  String get pickReasonShuffleNoArtist;
+
+  /// Smart Shuffle: the value drawn for the song and the average draw
+  ///
+  /// In en, this message translates to:
+  /// **'drew {draw} (typical {typical}); the highest draws play'**
+  String pickReasonShuffleDraw(String draw, String typical);
+
+  /// Radio: from the server's similar songs
+  ///
+  /// In en, this message translates to:
+  /// **'similar to “{title}”, by the server'**
+  String pickReasonRadioSimilar(String title);
+
+  /// Radio fallback: random songs of the seed's genre
+  ///
+  /// In en, this message translates to:
+  /// **'random from the genre of “{title}”'**
+  String pickReasonRadioGenre(String title);
+
+  /// Radio fallback: the artist's top songs
+  ///
+  /// In en, this message translates to:
+  /// **'top songs of the artist of “{title}”'**
+  String pickReasonRadioArtistTop(String title);
+
+  /// Radio fallback: a search for the artist
+  ///
+  /// In en, this message translates to:
+  /// **'found by searching for the artist of “{title}”'**
+  String pickReasonRadioArtistSearch(String title);
+
+  /// Radio fallback: random songs
+  ///
+  /// In en, this message translates to:
+  /// **'random: nothing similar to “{title}” was found'**
+  String pickReasonRadioRandom(String title);
 }
 
 class _AppLocalizationsDelegate
