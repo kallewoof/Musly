@@ -29,11 +29,7 @@ class _CachedLibrary extends LibraryProvider {
 
   @override
   List<Song> get cachedAllSongs => [
-        Song(
-            id: 's1',
-            title: 'Song 1',
-            artist: 'Artist A',
-            album: 'Album 1'),
+        Song(id: 's1', title: 'Song 1', artist: 'Artist A', album: 'Album 1'),
         Song(
             id: 's2',
             title: 'Quiet Song',
@@ -50,10 +46,7 @@ class _CachedLibrary extends LibraryProvider {
   @override
   List<Album> get cachedAllAlbums => [
         Album(id: 'al1', name: 'Album 2', artist: 'Artist A'),
-        Album(
-            id: 'al2',
-            name: 'Album 3',
-            artist: 'Artist B'),
+        Album(id: 'al2', name: 'Album 3', artist: 'Artist B'),
       ];
 
   @override
