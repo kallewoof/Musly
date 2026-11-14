@@ -19,35 +19,6 @@ import 'search_screen.dart';
 import 'tv_main_screen.dart';
 import 'package:musly/screens/media/fantasy_screen.dart';
 
-class PlayPauseIntent extends Intent {
-  const PlayPauseIntent();
-}
-
-class _PlayPauseAction extends Action<PlayPauseIntent> {
-  final BuildContext context;
-  _PlayPauseAction(this.context);
-
-  @override
-  bool isEnabled(PlayPauseIntent intent) {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    if (primaryFocus != null) {
-      final focusedContext = primaryFocus.context;
-      if (focusedContext != null &&
-          focusedContext.findAncestorWidgetOfExactType<EditableText>() !=
-              null) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @override
-  Object? invoke(PlayPauseIntent intent) {
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    playerProvider.togglePlayPause();
-    return null;
-  }
-}
 
 class MainScreen extends StatefulWidget {
   final bool isOfflineMode;
@@ -281,21 +252,10 @@ class _MainScreenState extends State<MainScreen> {
         ),
       );
 
-      return Shortcuts(
-        shortcuts: <ShortcutActivator, Intent>{
-          const SingleActivator(LogicalKeyboardKey.space):
-              const PlayPauseIntent(),
-        },
-        child: Actions(
-          actions: <Type, Action<Intent>>{
-            PlayPauseIntent: _PlayPauseAction(context),
-          },
-          child: TvRemoteScope(
-            child: Focus(
-              autofocus: true,
-              child: content,
-            ),
-          ),
+      return TvRemoteScope(
+        child: Focus(
+          autofocus: true,
+          child: content,
         ),
       );
     }

@@ -38,21 +38,45 @@ class TvRemoteScope extends StatelessWidget {
               player?.skipPrevious(),
           const SingleActivator(LogicalKeyboardKey.mediaRewind): () =>
               player?.skipPrevious(),
-          const SingleActivator(LogicalKeyboardKey.space): () {
-            final currentFocus = FocusManager.instance.primaryFocus;
-            if (currentFocus == null ||
-                currentFocus.context?.widget is! EditableText) {
-              player?.togglePlayPause();
-            }
-          },
         },
-        child: FocusScope(
-          autofocus: tvService?.isTvMode ?? false,
-          child: child,
+        child: Shortcuts(
+          shortcuts: const <ShortcutActivator, Intent>{
+            SingleActivator(LogicalKeyboardKey.space): _PlayPauseIntent(),
+          },
+          child: Actions(
+            actions: <Type, Action<Intent>>{
+              _PlayPauseIntent: _PlayPauseAction(player),
+            },
+            child: FocusScope(
+              autofocus: tvService?.isTvMode ?? false,
+              child: child,
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+class _PlayPauseIntent extends Intent {
+  const _PlayPauseIntent();
+}
+
+/// Space toggles playback, except while a text field has focus: a disabled action leaves the key unhandled,
+/// so it goes on to the text field. (CallbackShortcuts would consume it either way.)
+class _PlayPauseAction extends Action<_PlayPauseIntent> {
+  _PlayPauseAction(this.player);
+
+  final PlayerProvider? player;
+
+  @override
+  bool isEnabled(_PlayPauseIntent intent) =>
+      FocusManager.instance.primaryFocus?.context
+          ?.findAncestorWidgetOfExactType<EditableText>() ==
+      null;
+
+  @override
+  Object? invoke(_PlayPauseIntent intent) => player?.togglePlayPause();
 }
 
 class TvFocusableCard extends StatefulWidget {
