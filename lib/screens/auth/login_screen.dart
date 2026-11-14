@@ -35,6 +35,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _serverController = TextEditingController();
+  final _lanUrlController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _serverFocusNode = FocusNode();
@@ -299,6 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.removeListener(_clearError);
     _profileNameController.removeListener(_clearError);
     _serverController.dispose();
+    _lanUrlController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     _profileNameController.dispose();
@@ -422,6 +424,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ? null
           : _clientCertPasswordController.text,
       profileName: profileName.isEmpty ? null : profileName,
+      lanUrl: _serverFamily == 'subsonic' &&
+              _lanUrlController.text.trim().isNotEmpty
+          ? _lanUrlController.text.trim()
+          : null,
       serverFamily: _serverFamily,
     );
 
@@ -824,6 +830,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                        ],
+                        if (_serverFamily == 'subsonic') ...[
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            key: const ValueKey('login-lan-url'),
+                            controller: _lanUrlController,
+                            keyboardType: TextInputType.url,
+                            autocorrect: false,
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!
+                                  .lanServerUrlOptional,
+                              hintText: 'e.g. http://192.168.1.5:4533',
+                              prefixIcon: const Icon(CupertinoIcons.wifi),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ],

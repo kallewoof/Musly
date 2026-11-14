@@ -253,17 +253,32 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
                       color: isDark ? Colors.white70 : Colors.black87,
                     ),
                   ),
-                  if (config.lanUrl != null && config.lanUrl!.isNotEmpty) ...[
+                  if (!config.isJellyfin) ...[
                     const Spacer(),
-                    Icon(CupertinoIcons.wifi,
-                        size: 14,
-                        color: isDark ? Colors.white54 : Colors.black45),
-                    const SizedBox(width: 4),
-                    Text(
-                      'LAN: ${config.lanUrl}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? Colors.white54 : Colors.black45,
+                    InkWell(
+                      key: const ValueKey('edit-lan-url'),
+                      onTap: () => _editLanUrl(context, config),
+                      child: Row(
+                        children: [
+                          Icon(CupertinoIcons.wifi,
+                              size: 14,
+                              color: isDark ? Colors.white54 : Colors.black45),
+                          const SizedBox(width: 4),
+                          Text(
+                            config.lanUrl != null && config.lanUrl!.isNotEmpty
+                                ? 'LAN: ${config.lanUrl}'
+                                : AppLocalizations.of(context)!
+                                    .lanServerUrlOptional,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.white54 : Colors.black45,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(CupertinoIcons.pencil,
+                              size: 12,
+                              color: isDark ? Colors.white54 : Colors.black45),
+                        ],
                       ),
                     ),
                   ],
@@ -289,6 +304,15 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
         ],
       ),
     );
+  }
+
+  Future<void> _editLanUrl(BuildContext context, ServerConfig config) async {
+    final lanUrl = await showDialog<String>(
+      context: context,
+      builder: (_) => _LanUrlDialog(initial: config.lanUrl ?? ''),
+    );
+    if (lanUrl == null || !context.mounted) return;
+    await Provider.of<AuthProvider>(context, listen: false).setLanUrl(lanUrl);
   }
 
   Widget _buildSavedServersSection(
@@ -639,6 +663,54 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Edits the current server's LAN address. Pops the new address, an empty one for Clear, or nothing for
+/// Cancel.
+class _LanUrlDialog extends StatefulWidget {
+  const _LanUrlDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_LanUrlDialog> createState() => _LanUrlDialogState();
+}
+
+class _LanUrlDialogState extends State<_LanUrlDialog> {
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return AlertDialog(
+      title: Text(l10n.lanServerUrlOptional),
+      content: TextField(
+        key: const ValueKey('lan-url-field'),
+        controller: _controller,
+        autofocus: true,
+        keyboardType: TextInputType.url,
+        autocorrect: false,
+        decoration:
+            const InputDecoration(hintText: 'e.g. http://192.168.1.5:4533'),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+        TextButton(
+            onPressed: () => Navigator.pop(context, ''),
+            child: Text(l10n.clear)),
+        TextButton(
+            onPressed: () => Navigator.pop(context, _controller.text),
+            child: Text(l10n.save)),
+      ],
     );
   }
 }

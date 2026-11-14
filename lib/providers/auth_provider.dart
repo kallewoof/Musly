@@ -335,6 +335,19 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets the current server's LAN address (empty for none), saves it with the server and its profile, and
+  /// re-decides the route at once, so the change takes effect without reconnecting.
+  Future<void> setLanUrl(String lanUrl) async {
+    final current = _config;
+    if (current == null) return;
+    final updated = current.copyWith(lanUrl: lanUrl.trim());
+    _config = updated;
+    await _storageService.saveServerConfig(updated);
+    await _storageService.saveProfile(updated);
+    await _subsonicService.configure(updated);
+    notifyListeners();
+  }
+
   Future<bool> connectYtStream() async {
     if (!kIsWeb && Platform.isIOS) {
       return false;
