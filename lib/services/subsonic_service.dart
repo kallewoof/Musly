@@ -1173,6 +1173,26 @@ class SubsonicService {
     }
   }
 
+  /// Whether the server has song [id] starred, for correcting a copy that may be stale. Null when it cannot
+  /// say: not a Subsonic server, unreachable, or a star or unstar of the song still waiting to be sent, which
+  /// is newer than anything the server holds. It runs in line with star actions, so it never reads the server
+  /// between a tap and the request that tap sends.
+  Future<bool?> serverStarred(String id) async {
+    if (_jellyfin != null || _youtube != null) return null;
+    bool? starred;
+    try {
+      await _serializeStars(() async {
+        if ((await _pendingStars()).containsKey(_starKey({'id': id}))) return;
+        final song = (await _request('getSong', {'id': id}))['song'];
+        if (song is Map<String, dynamic>) starred = song['starred'] != null;
+      });
+    } catch (e) {
+      debugPrint('[Subsonic] getSong $id for its star failed: $e');
+      return null;
+    }
+    return starred;
+  }
+
   static String _starKey(Map<String, String> params) =>
       (params.entries.map((e) => '${e.key}=${e.value}').toList()..sort())
           .join('&');

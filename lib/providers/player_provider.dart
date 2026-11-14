@@ -2991,6 +2991,20 @@ class PlayerProvider extends ChangeNotifier
     unawaited(_saveQueueStateImmediate());
   }
 
+  /// The queue's copy of the current song's star can be stale: a queue restored at launch, or another
+  /// device starred it since. The server's answer replaces it when it differs from the copy the check
+  /// started from. A tap made meanwhile is kept: the server answered from before the tap, so it either equals
+  /// that copy and is ignored, or already agrees with the tap. The star is set by id, so an answer that comes
+  /// after the song was left corrects that song, never the one now playing.
+  Future<void> refreshCurrentStar() async {
+    final song = _currentSong;
+    if (song == null || song.isLocal || _offlineService.isOfflineMode) return;
+    final starred = await _subsonicService.serverStarred(song.id);
+    if (starred != null && starred != (song.starred == true)) {
+      _setStarred(song.id, starred);
+    }
+  }
+
   Future<void> toggleFavorite() async {
     if (_currentSong == null) return;
 

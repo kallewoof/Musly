@@ -20,6 +20,9 @@ class _StarServer {
   /// Delays every answer (after recording the call), to let a test act while a request is in flight.
   Duration delay = Duration.zero;
 
+  /// Songs starred on the server. A star or unstar takes effect when its delayed answer goes out.
+  final starred = <String>{};
+
   Future<void> up() async {
     _server = await HttpServer.bind(
         InternetAddress.loopbackIPv4, _server == null ? 0 : port);
@@ -31,11 +34,26 @@ class _StarServer {
         await req.response.close();
         return;
       }
+      final q = req.uri.queryParameters;
+      if (op == 'getSong') {
+        final star = starred.contains(q['id'])
+            ? ',"starred":"2026-11-14T00:00:00Z"'
+            : '';
+        req.response
+          ..headers.contentType = ContentType.json
+          ..write(
+              '{"subsonic-response":{"status":"ok","song":{"id":"${q['id']}","title":"t"$star}}}');
+        await req.response.close();
+        return;
+      }
       if (op == 'star' || op == 'unstar') {
-        final q = req.uri.queryParameters;
         calls.add('$op ${q['id'] ?? q['albumId'] ?? q['artistId']}');
       }
       await Future<void>.delayed(delay);
+      if (!refuse && q['id'] != null) {
+        if (op == 'star') starred.add(q['id']!);
+        if (op == 'unstar') starred.remove(q['id']!);
+      }
       req.response
         ..headers.contentType = ContentType.json
         ..write(refuse
@@ -163,5 +181,34 @@ void main() {
     await flushing;
 
     expect(server.calls.where((c) => c.endsWith('song1')).last, 'unstar song1');
+  });
+
+  group('serverStarred', () {
+    // RD: the answer is read from the wrong field, so a song starred on another device still shows an empty heart here.
+    test('reports the server\'s star for a song', () async {
+      server.starred.add('s1');
+
+      expect(await service.serverStarred('s1'), isTrue);
+      expect(await service.serverStarred('s2'), isFalse);
+    });
+
+    // RD: a star made offline and not yet sent is replaced by the server's older state, so the heart reverts and the star is later sent anyway.
+    test('cannot say while a star of the song waits to be sent', () async {
+      await server.down();
+      await service.star(id: 's1');
+      await server.up();
+
+      expect(await service.serverStarred('s1'), isNull);
+    });
+
+    // RD: the check reads the server between a tap and the request it sends, so it reports the old state and the heart flips back.
+    test('answers after a star already on its way', () async {
+      server.delay = const Duration(milliseconds: 150);
+      final tap = service.star(id: 's1');
+      final answer = service.serverStarred('s1');
+
+      expect(await answer, isTrue);
+      await tap;
+    });
   });
 }
