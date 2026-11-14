@@ -1,0 +1,9 @@
+#!/bin/sh
+# commit-msg: refuse a message holding a private string, with the unimouse super-project's
+# scripts/pii-check.sh, which holds the patterns. Outside that checkout it fails rather than passes.
+# Enable once per clone: git config core.hooksPath .githooks
+
+set -eu
+pii="$(git rev-parse --show-superproject-working-tree)/scripts/pii-check.sh"
+[ -x "$pii" ] || { echo "commit-msg FAILED: $pii not found (run this hook inside the unimouse checkout)"; exit 1; }
+"$pii" --message "$1" || { echo "commit-msg FAILED: private strings in the message (above)"; exit 1; }
