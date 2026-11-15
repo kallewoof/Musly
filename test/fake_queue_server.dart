@@ -10,11 +10,20 @@ class FakeQueueServer {
   /// Off for a server without the OpenSubsonic index-based queue (gonic, older Navidrome).
   bool indexBasedQueue = true;
 
+  /// On for our navidrome build, which keeps users' tag edits.
+  bool tagOverlay = false;
+
   /// Delays the queue lookup, to let a test act while a device waits for the server.
   Duration getDelay = Duration.zero;
   int gets = 0;
   Map<String, dynamic>? queue;
   var _clock = 0;
+
+  /// The parameters of the last request to each endpoint, by endpoint name ("setTagOverlay").
+  final lastParams = <String, Map<String, List<String>>>{};
+
+  /// What getSong answers with, when set.
+  Map<String, dynamic>? song;
 
   /// The song ids getSimilarSongs2 and getRandomSongs answer with.
   List<String> similarIds = const [];
@@ -61,6 +70,7 @@ class FakeQueueServer {
 
     add(req.uri.query);
     add(body);
+    lastParams[req.uri.pathSegments.last] = params;
     Map<String, dynamic> response = {'status': 'ok'};
     if (req.uri.path.endsWith('/savePlayQueueByIndex')) {
       if (failSaves) {
@@ -84,7 +94,16 @@ class FakeQueueServer {
             'name': 'indexBasedQueue',
             'versions': [1]
           },
+        if (tagOverlay)
+          {
+            'name': 'unimouseTagOverlay',
+            'versions': [1]
+          },
       ];
+    } else if (req.uri.path.endsWith('/setTagOverlay')) {
+      response['tagOverlay'] = {'id': params['id']!.single};
+    } else if (req.uri.path.endsWith('/getSong') && song != null) {
+      response['song'] = song;
     } else if (req.uri.path.endsWith('/getSimilarSongs2')) {
       response['similarSongs2'] = {
         'song': [

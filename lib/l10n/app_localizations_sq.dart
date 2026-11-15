@@ -3280,4 +3280,49 @@ class AppLocalizationsSq extends AppLocalizations {
   String pickReasonRadioRandom(String title) {
     return 'random: nothing similar to “$title” was found';
   }
+
+  @override
+  String get editTags => 'Edit tags';
+
+  @override
+  String get editTagsTitle => 'Title';
+
+  @override
+  String get editTagsArtist => 'Artist';
+
+  @override
+  String get editTagsArtistHint => 'e.g. Producer feat. Voice Append (Dark)';
+
+  @override
+  String get editTagsComposer => 'Composer';
+
+  @override
+  String get editTagsAlbum => 'Album';
+
+  @override
+  String get editTagsEditedNote =>
+      'This song has edits. They are kept on the server and written to the file later.';
+
+  @override
+  String get editTagsRevert => 'Revert to the file\'s tags';
+
+  @override
+  String get editTagsSaved => 'Tags saved';
+
+  @override
+  String get editTagsPending =>
+      'Saved. The song shows the edit once the server has re-read it.';
+
+  @override
+  String get editTagsReverted => 'Back to the file\'s tags';
+
+  @override
+  String editTagsFailed(String error) {
+    return 'Could not save the tags: $error';
+  }
+
+  @override
+  String editTagsLoadFailed(String error) {
+    return 'Could not load the tags: $error';
+  }
 }

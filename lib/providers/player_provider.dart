@@ -3082,6 +3082,27 @@ class PlayerProvider extends ChangeNotifier
     unawaited(_saveQueueStateImmediate());
   }
 
+  /// Puts the server's current copy of a song in place of the queue's copies after its tags were edited, and
+  /// republishes the lock screen's details when it is the current song.
+  void replaceSong(Song song) {
+    final current = _currentSong?.id == song.id;
+    if (current) _currentSong = song;
+    var inQueue = false;
+    for (var i = 0; i < _queue.length; i++) {
+      if (_queue[i].id == song.id) {
+        _queue[i] = song;
+        inQueue = true;
+      }
+    }
+    if (!current && !inQueue) return;
+    notifyListeners();
+    unawaited(_saveQueueStateImmediate());
+    if (current) {
+      _updateAndroidAuto();
+      _updateAllServices();
+    }
+  }
+
   /// The queue's copy of the current song's star can be stale: a queue restored at launch, or another
   /// device starred it since. The server's answer replaces it when it differs from the copy the check
   /// started from. A tap made meanwhile is kept: the server answered from before the tap, so it either equals

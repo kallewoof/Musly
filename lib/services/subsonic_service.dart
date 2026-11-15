@@ -565,6 +565,52 @@ class SubsonicService {
     }();
   }
 
+  /// Whether the server keeps users' tag edits (navidrome's `unimouseTagOverlay`, in our build). Subsonic only.
+  Future<bool> supportsTagOverlay() async =>
+      _jellyfin == null &&
+      _youtube == null &&
+      (await openSubsonicExtensions()).contains('unimouseTagOverlay');
+
+  Future<TagOverlay> getTagOverlay(String id) async => TagOverlay.fromJson(
+      (await _request('getTagOverlay', {'id': id}))['tagOverlay']
+          as Map<String, dynamic>);
+
+  /// Edits the song's tags on the server: each field given replaces that tag (an empty one clears it), and the
+  /// server re-reads the song with the edit in the background.
+  Future<TagOverlay> setTagOverlay(
+    String id, {
+    String? title,
+    String? artist,
+    String? composer,
+    String? album,
+  }) async {
+    final response = await _request('setTagOverlay', {
+      'id': id,
+      if (title != null) 'title': title,
+      if (artist != null) 'artist': artist,
+      if (composer != null) 'composer': composer,
+      if (album != null) 'album': album,
+    });
+    return TagOverlay.fromJson(response['tagOverlay'] as Map<String, dynamic>);
+  }
+
+  Future<void> resetTagOverlay(String id) =>
+      _request('resetTagOverlay', {'id': id});
+
+  /// The song as the server has it now, with its composers (OpenSubsonic contributors), which [Song] does not
+  /// carry. Subsonic only.
+  Future<({Song song, List<String> composers})> getSongWithComposers(
+      String id) async {
+    final json =
+        (await _request('getSong', {'id': id}))['song'] as Map<String, dynamic>;
+    final composers = [
+      for (final c in (json['contributors'] as List<dynamic>? ?? const []))
+        if ((c as Map)['role'] == 'composer')
+          (c['artist'] as Map)['name'] as String
+    ];
+    return (song: Song.fromJson(json), composers: composers);
+  }
+
   Future<RemotePlayQueue?> getPlayQueue() async {
     final response = await _request('getPlayQueueByIndex');
     final queue = response['playQueueByIndex'];

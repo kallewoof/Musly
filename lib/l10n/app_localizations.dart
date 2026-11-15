@@ -5997,6 +5997,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'random: nothing similar to “{title}” was found'**
   String pickReasonRadioRandom(String title);
+
+  /// Menu entry and sheet title for editing a song's tags
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tags'**
+  String get editTags;
+
+  /// Song title field in the tag editor
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get editTagsTitle;
+
+  /// Artist credit field in the tag editor
+  ///
+  /// In en, this message translates to:
+  /// **'Artist'**
+  String get editTagsArtist;
+
+  /// Hint for the artist credit field: how to credit featured voices and voice banks
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Producer feat. Voice Append (Dark)'**
+  String get editTagsArtistHint;
+
+  /// Composer field in the tag editor
+  ///
+  /// In en, this message translates to:
+  /// **'Composer'**
+  String get editTagsComposer;
+
+  /// Album field in the tag editor
+  ///
+  /// In en, this message translates to:
+  /// **'Album'**
+  String get editTagsAlbum;
+
+  /// Shown in the tag editor when the song already has edits
+  ///
+  /// In en, this message translates to:
+  /// **'This song has edits. They are kept on the server and written to the file later.'**
+  String get editTagsEditedNote;
+
+  /// Button dropping all edits of the song
+  ///
+  /// In en, this message translates to:
+  /// **'Revert to the file\'s tags'**
+  String get editTagsRevert;
+
+  /// Confirmation after an edit shows in the library
+  ///
+  /// In en, this message translates to:
+  /// **'Tags saved'**
+  String get editTagsSaved;
+
+  /// Confirmation when the server has not re-read the song yet
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. The song shows the edit once the server has re-read it.'**
+  String get editTagsPending;
+
+  /// Confirmation after reverting a song's edits
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the file\'s tags'**
+  String get editTagsReverted;
+
+  /// Error when saving or reverting tags fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the tags: {error}'**
+  String editTagsFailed(String error);
+
+  /// Error when the tag editor cannot load the song
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the tags: {error}'**
+  String editTagsLoadFailed(String error);
 }
 
 class _AppLocalizationsDelegate

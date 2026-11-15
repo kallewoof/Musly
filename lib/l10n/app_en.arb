@@ -4036,5 +4036,67 @@
         "type": "String"
       }
     }
+  },
+  "editTags": "Edit tags",
+  "@editTags": {
+    "description": "Menu entry and sheet title for editing a song's tags"
+  },
+  "editTagsTitle": "Title",
+  "@editTagsTitle": {
+    "description": "Song title field in the tag editor"
+  },
+  "editTagsArtist": "Artist",
+  "@editTagsArtist": {
+    "description": "Artist credit field in the tag editor"
+  },
+  "editTagsArtistHint": "e.g. Producer feat. Voice Append (Dark)",
+  "@editTagsArtistHint": {
+    "description": "Hint for the artist credit field: how to credit featured voices and voice banks"
+  },
+  "editTagsComposer": "Composer",
+  "@editTagsComposer": {
+    "description": "Composer field in the tag editor"
+  },
+  "editTagsAlbum": "Album",
+  "@editTagsAlbum": {
+    "description": "Album field in the tag editor"
+  },
+  "editTagsEditedNote": "This song has edits. They are kept on the server and written to the file later.",
+  "@editTagsEditedNote": {
+    "description": "Shown in the tag editor when the song already has edits"
+  },
+  "editTagsRevert": "Revert to the file's tags",
+  "@editTagsRevert": {
+    "description": "Button dropping all edits of the song"
+  },
+  "editTagsSaved": "Tags saved",
+  "@editTagsSaved": {
+    "description": "Confirmation after an edit shows in the library"
+  },
+  "editTagsPending": "Saved. The song shows the edit once the server has re-read it.",
+  "@editTagsPending": {
+    "description": "Confirmation when the server has not re-read the song yet"
+  },
+  "editTagsReverted": "Back to the file's tags",
+  "@editTagsReverted": {
+    "description": "Confirmation after reverting a song's edits"
+  },
+  "editTagsFailed": "Could not save the tags: {error}",
+  "@editTagsFailed": {
+    "description": "Error when saving or reverting tags fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editTagsLoadFailed": "Could not load the tags: {error}",
+  "@editTagsLoadFailed": {
+    "description": "Error when the tag editor cannot load the song",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -162,6 +162,18 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
     return _mergedAlbumsCache!;
   }
 
+  /// Puts the server's current copy of a song in place of the cached one, in memory and in the library
+  /// database, after its tags were edited.
+  Future<void> replaceSong(Song song) async {
+    final i = _cachedAllSongs.indexWhere((s) => s.id == song.id);
+    if (i >= 0) {
+      _cachedAllSongs = List.of(_cachedAllSongs)..[i] = song;
+      _mergedSongsCache = null;
+    }
+    await _db.insertOrUpdateSong(song);
+    notifyListeners();
+  }
+
   @override
   List<Song> get cachedAllSongs {
     if (!_mergeLocalLibrary ||

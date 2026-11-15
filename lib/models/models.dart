@@ -13,3 +13,4 @@ export 'server_config.dart';
 export 'song.dart';
 export 'play_queue.dart';
 export 'pick_reason.dart';
+export 'tag_overlay.dart';

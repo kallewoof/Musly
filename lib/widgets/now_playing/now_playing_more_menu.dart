@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/player_provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../modals/edit_tags_sheet.dart';
 
 class NowPlayingMoreMenu extends StatelessWidget {
   const NowPlayingMoreMenu({super.key});
@@ -158,6 +159,8 @@ class NowPlayingMoreMenu extends StatelessWidget {
                   provider.togglePitchCorrection();
                 },
               ),
+              if (provider.currentSong case final song?)
+                EditTagsMenuEntry(song: song),
             ],
           );
         },

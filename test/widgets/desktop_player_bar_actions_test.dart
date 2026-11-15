@@ -18,6 +18,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../test_helpers.dart';
 import '../bootstrap.dart';
 
+/// The song menu asks the server whether it keeps tag edits; this server is never reached in tests, and its
+/// request would outlive the test.
+class _NoTagOverlayService extends SubsonicService {
+  @override
+  Future<bool> supportsTagOverlay() async => false;
+}
+
 void main() {
   initializeTestEnvironment();
 
@@ -28,7 +35,7 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
-      subsonicService = SubsonicService();
+      subsonicService = _NoTagOverlayService();
       await subsonicService.configure(ServerConfig(
         serverUrl: 'https://demo.navidrome.org',
         username: 'user',

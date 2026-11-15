@@ -15,6 +15,7 @@ import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../common/album_artwork.dart';
 import '../common/multi_artist_widget.dart';
+import 'edit_tags_sheet.dart';
 import '../../screens/detail/album_screen.dart';
 import '../../screens/detail/artist_screen.dart';
 
@@ -402,6 +403,10 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
                         SongOptionsModal.showPlaylistPicker(
                             context, widget.song);
                       },
+                    ),
+                    EditTagsMenuEntry(
+                      song: widget.song,
+                      iconColor: Theme.of(context).colorScheme.primary,
                     ),
                     _OptionTile(
                       icon: Icons.album_rounded,
