@@ -12,7 +12,7 @@ import 'package:musly/services/storage_service.dart';
 import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/services/transcoding_service.dart';
 import 'package:musly/services/upnp_service.dart';
-import 'package:musly/widgets/now_playing/pick_reason_chip.dart';
+import 'package:musly/widgets/now_playing/pick_reason_list.dart';
 
 import '../bootstrap.dart';
 import '../test_helpers.dart';
@@ -52,9 +52,9 @@ void main() {
     explained = _ExplainingPlayer(mixPick);
   });
 
-  Future<void> pumpNowPlaying(
-      WidgetTester tester, PlayerProvider player) async {
-    tester.view.physicalSize = const Size(400, 800);
+  Future<void> pumpNowPlaying(WidgetTester tester, PlayerProvider player,
+      {Size size = const Size(400, 800)}) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     // A fresh tree: the app's providers are created once per tree, so the player would otherwise be the last one.
@@ -73,29 +73,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   }
 
-  // RD: the chip is left out of the Now Playing layout (or shown for every song), so a pick's reasons cannot be seen,
-  // or an album's song offers a "why?" with nothing behind it.
-  testWidgets(
-      'Now Playing offers "why?" for a picked song, and opens its reasons',
+  // RD: the list is left out of the Now Playing layout (or shown for every song), so a pick's reasons cannot be
+  // seen, or an album's song shows reasons from a queue it is not in.
+  testWidgets('Now Playing shows why a picked song was picked, and only then',
       (tester) async {
     await pumpNowPlaying(tester, unexplained);
-    expect(find.byKey(const ValueKey('pick-reason-chip')), findsNothing);
+    expect(find.byKey(const ValueKey('pick-reasons')), findsNothing);
 
     await pumpNowPlaying(tester, explained);
-    await tester.tap(find.byKey(const ValueKey('pick-reason-chip')));
-    // Now Playing animates for as long as it is open, so it never settles.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(find.text('Why this song'), findsOneWidget);
     expect(find.text('+.20: favourite'), findsOneWidget);
+    expect(find.text('= .19: ranked by'), findsOneWidget);
 
     // Let the screen's delayed work (the title's marquee) run out after it is gone.
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 10));
   });
 
-  // RD: the sheet drops the random part or the total, or loses a minus sign, so its lines do not add up to what
+  // RD: the extra lines push the controls off a short landscape screen, an overflow that only shows for picked songs.
+  testWidgets('the reasons fit a landscape Now Playing', (tester) async {
+    await pumpNowPlaying(tester, explained, size: const Size(850, 400));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('+.20: favourite'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 10));
+  });
+
+  // RD: the list drops the random part or the total, or loses a minus sign, so its lines do not add up to what
   // ranked the song.
   test(
       'lists a mix pick largest part first, then the random part and the total',

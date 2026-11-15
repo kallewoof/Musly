@@ -3160,12 +3160,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Si quieres una superposición hermosa y ligera \"Made for Musly\", puedes usar Spotverlay (https://github.com/dddevid/Spotverlay)';
 
   @override
-  String get pickReasonWhy => 'why?';
-
-  @override
-  String get pickReasonTitle => 'Why this song';
-
-  @override
   String get pickReasonArtist => 'artist you play';
 
   @override

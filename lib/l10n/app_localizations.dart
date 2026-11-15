@@ -5818,18 +5818,6 @@ abstract class AppLocalizations {
   /// **'If you want a beautiful and lightweight \"Made for Musly\" overlay, you can use Spotverlay (https://github.com/dddevid/Spotverlay)'**
   String get spotverlayDescription;
 
-  /// Chip on Now Playing that opens why the current song was picked
-  ///
-  /// In en, this message translates to:
-  /// **'why?'**
-  String get pickReasonWhy;
-
-  /// Title of the sheet explaining why the current song was picked
-  ///
-  /// In en, this message translates to:
-  /// **'Why this song'**
-  String get pickReasonTitle;
-
   /// Score part: how much the user plays this artist
   ///
   /// In en, this message translates to:

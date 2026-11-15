@@ -3823,14 +3823,6 @@
   "@spotverlayDescription": {
     "description": "Message recommending Spotverlay desktop overlay for Musly"
   },
-  "pickReasonWhy": "why?",
-  "@pickReasonWhy": {
-    "description": "Chip on Now Playing that opens why the current song was picked"
-  },
-  "pickReasonTitle": "Why this song",
-  "@pickReasonTitle": {
-    "description": "Title of the sheet explaining why the current song was picked"
-  },
   "pickReasonArtist": "artist you play",
   "@pickReasonArtist": {
     "description": "Score part: how much the user plays this artist"

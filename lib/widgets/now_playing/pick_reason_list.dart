@@ -4,72 +4,32 @@ import '../../l10n/app_localizations.dart';
 import '../../models/pick_reason.dart';
 import '../../services/smart_shuffle.dart';
 
-/// A small "why?" under the song title; tapping it lists why the song was picked.
-class PickReasonChip extends StatelessWidget {
-  const PickReasonChip({super.key, required this.reason});
+/// Why the current song was picked, in small print under its title.
+class PickReasonList extends StatelessWidget {
+  const PickReasonList({super.key, required this.reason});
 
   final PickReason reason;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return InkWell(
-      key: const ValueKey('pick-reason-chip'),
-      borderRadius: BorderRadius.circular(8),
-      onTap: () => showModalBottomSheet(
-        context: context,
-        useRootNavigator: true,
-        builder: (_) => PickReasonSheet(reason: reason),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.help_outline_rounded,
-                size: 13, color: Colors.white.withValues(alpha: 0.55)),
-            const SizedBox(width: 3),
-            Text(
-              l10n.pickReasonWhy,
-              style: TextStyle(
-                  fontSize: 12, color: Colors.white.withValues(alpha: 0.55)),
-            ),
-          ],
-        ),
-      ),
+    final style = TextStyle(
+      fontSize: 11,
+      height: 1.3,
+      color: Colors.white.withValues(alpha: 0.55),
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
-  }
-}
-
-class PickReasonSheet extends StatelessWidget {
-  const PickReasonSheet({super.key, required this.reason});
-
-  final PickReason reason;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final small = Theme.of(context)
-        .textTheme
-        .bodySmall!
-        .copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.pickReasonTitle,
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            for (final line in pickReasonLines(reason, l10n))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 1.5),
-                child: Text(line, style: small),
-              ),
-          ],
-        ),
+    return Padding(
+      key: const ValueKey('pick-reasons'),
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final line
+              in pickReasonLines(reason, AppLocalizations.of(context)!))
+            Text(line,
+                style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
       ),
     );
   }
