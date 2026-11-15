@@ -171,4 +171,40 @@ void main() {
     // b's artist record is a's: (4 + 1) / (4 + 0 + 2).
     expect((reasons['b'] as ShufflePick).artistMean, closeTo(5 / 6, 1e-9));
   });
+
+  // RD: the placeholder of untagged songs counts as an artist, so each untagged song starts from the record of all
+  // the others.
+  test('gives songs without an artist tag no shared artist record', () {
+    final reasons = <String, PickReason>{};
+    SmartShuffle(random: Random(3)).pick(
+        [
+          song('a', artist: Song.unknownArtist),
+          song('b', artist: Song.unknownArtist)
+        ],
+        2,
+        exclude: const {},
+        outcomes: (s) =>
+            s.id == 'a' ? (completes: 4, skips: 0) : (completes: 0, skips: 0),
+        reasons: reasons);
+
+    expect((reasons['b'] as ShufflePick).artistMean, isNull);
+  });
+
+  // RD: the artist gap treats the placeholder as one artist, so untagged songs the user loves are held back behind
+  // songs they skip.
+  test('does not space songs without an artist tag apart', () {
+    final picked = SmartShuffle(random: Random(3)).pick(
+        [
+          song('loved1', artist: Song.unknownArtist),
+          song('loved2', artist: Song.unknownArtist),
+          song('skipped', artist: 'Artist A'),
+        ],
+        3,
+        exclude: const {},
+        outcomes: (s) => s.id == 'skipped'
+            ? (completes: 0, skips: 50)
+            : (completes: 50, skips: 0));
+
+    expect(picked[2].id, 'skipped');
+  });
 }

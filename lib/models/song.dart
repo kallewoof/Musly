@@ -34,6 +34,17 @@ class Song {
   final int? skipCount;
   final int? completeCount;
 
+  /// The names Navidrome gives songs without an artist or album tag. The songs share the name, not an artist
+  /// or album, so the taste models must not pool them as one.
+  static const unknownArtist = '[Unknown Artist]';
+  static const unknownAlbum = '[Unknown Album]';
+
+  /// [artist], or null for the placeholder of a song without one.
+  String? get knownArtist => artist == unknownArtist ? null : artist;
+
+  /// [albumId], or null when the album is the placeholder of a song without one.
+  String? get knownAlbumId => album == unknownAlbum ? null : albumId;
+
   Song({
     required this.id,
     required this.title,

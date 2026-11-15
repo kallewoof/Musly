@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musly/models/pick_reason.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/services/recommendation_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../bootstrap.dart';
 
@@ -129,5 +132,98 @@ void main() {
     }
     expect(model.reasonsFor(List.of(first)), isEmpty,
         reason: 'only the list the service returned');
+  });
+
+  Song tagged(String id, String artist, String album, String albumId) => Song(
+      id: id,
+      title: id,
+      artist: artist,
+      album: album,
+      albumId: albumId,
+      duration: 200);
+  Song untagged(String id) =>
+      tagged(id, Song.unknownArtist, Song.unknownAlbum, 'unknown-album');
+
+  // RD: the placeholder Navidrome gives untagged songs counts as an artist (or its album as an album): their plays,
+  // ratings and stars pile up as one top artist, which scales every real artist's part down and gets a mix.
+  test('does not pool songs without an artist or album tag as one', () async {
+    Future<void> listen(RecommendationService m, Song s) async {
+      await m.trackSongPlay(s, durationPlayed: 200, completed: true);
+      await m.trackSongRating(s, 5);
+      await m.trackStarred(s, true);
+    }
+
+    final known = tagged('k1', 'Artist A', 'Album 1', 'a1');
+    for (var i = 0; i < 3; i++) {
+      await listen(model, untagged('u$i'));
+    }
+    await listen(model, known);
+
+    SharedPreferences.setMockInitialValues({});
+    final onlyKnown = RecommendationService();
+    await onlyKnown.initialize();
+    addTearDown(onlyKnown.dispose);
+    await listen(onlyKnown, known);
+
+    Map<ScoreFactor, double> terms(RecommendationService m, Song s) =>
+        {for (final t in m.scoreTerms(s)) t.factor: t.value};
+    final next = tagged('k2', 'Artist A', 'Album 1', 'a1');
+    for (final f in [
+      ScoreFactor.artist,
+      ScoreFactor.artistRating,
+      ScoreFactor.album
+    ]) {
+      expect(terms(onlyKnown, next)[f], isNotNull, reason: '$f');
+      expect(terms(model, next)[f], closeTo(terms(onlyKnown, next)[f]!, 1e-9),
+          reason: '$f');
+    }
+    expect(model.getRecommendedArtists(), isNot(contains(Song.unknownArtist)));
+  });
+
+  // RD: affinity already stored under the placeholders survives a restart, and as the largest entry it scales every
+  // real artist's and album's part down.
+  test('drops affinity stored under the placeholders when loading', () async {
+    Future<Map<ScoreFactor, double>> termsAfterLoading(
+        Map<String, double> artists, Map<String, double> albums) async {
+      SharedPreferences.setMockInitialValues({
+        'rec_decay_ts': DateTime.now().millisecondsSinceEpoch,
+        'rec_data_v3': jsonEncode({
+          'artists': artists,
+          'artistRatings': artists,
+          'albums': albums,
+          'profiles': {
+            'u1': {
+              'songId': 'u1',
+              'title': 'u1',
+              'artist': Song.unknownArtist,
+              'albumId': 'unknown-album'
+            }
+          },
+        }),
+      });
+      final loaded = RecommendationService();
+      await loaded.initialize();
+      addTearDown(loaded.dispose);
+      return {
+        for (final t
+            in loaded.scoreTerms(tagged('k2', 'Artist A', 'Album 1', 'a1')))
+          t.factor: t.value
+      };
+    }
+
+    final clean =
+        await termsAfterLoading({'Artist A': 5.0}, {'a1': 4.0, 'a2': 2.0});
+    final polluted = await termsAfterLoading(
+        {Song.unknownArtist: 50.0, 'Artist A': 5.0},
+        {'unknown-album': 40.0, 'a1': 4.0, 'a2': 2.0});
+
+    for (final f in [
+      ScoreFactor.artist,
+      ScoreFactor.artistRating,
+      ScoreFactor.album
+    ]) {
+      expect(clean[f], isNotNull, reason: '$f');
+      expect(polluted[f], closeTo(clean[f]!, 1e-9), reason: '$f');
+    }
   });
 }

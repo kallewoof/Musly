@@ -2380,7 +2380,7 @@ class PlayerProvider extends ChangeNotifier
           : [
               for (final s in _queue
                   .skip(max(0, _queue.length - SmartShuffle.artistGap)))
-                s.artist
+                s.knownArtist
             ],
       reasons: reasons,
     );

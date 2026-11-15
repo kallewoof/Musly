@@ -50,7 +50,7 @@ class SmartShuffle {
         bad: o.skips.toDouble()
       );
       evidence[song.id] = e;
-      final artist = song.artist;
+      final artist = song.knownArtist;
       if (artist != null) {
         final a = byArtist[artist] ?? (good: 0.0, bad: 0.0);
         byArtist[artist] = (good: a.good + e.good, bad: a.bad + e.bad);
@@ -61,7 +61,7 @@ class SmartShuffle {
     for (final song in candidates) {
       if (exclude.contains(song.id)) continue;
       final e = evidence[song.id]!;
-      final a = song.artist == null ? null : byArtist[song.artist];
+      final a = song.knownArtist == null ? null : byArtist[song.knownArtist];
       // The artist's record without this song, smoothed so an artist with one listen is not certain.
       final mean = a == null
           ? 0.5
@@ -87,8 +87,8 @@ class SmartShuffle {
     final taken = <String>{};
     final lastArtists = List<String?>.of(recentArtists);
     bool spaced(Song s) =>
-        s.artist == null ||
-        !lastArtists.reversed.take(artistGap).contains(s.artist);
+        s.knownArtist == null ||
+        !lastArtists.reversed.take(artistGap).contains(s.knownArtist);
     for (final strict in [true, false]) {
       for (final (song, reason) in drawn) {
         if (picked.length >= count) return picked;
@@ -96,7 +96,7 @@ class SmartShuffle {
         picked.add(song);
         reasons?[song.id] = reason;
         taken.add(song.id);
-        lastArtists.add(song.artist);
+        lastArtists.add(song.knownArtist);
       }
     }
     return picked;

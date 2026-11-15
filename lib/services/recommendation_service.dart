@@ -130,9 +130,9 @@ class RecommendationService extends ChangeNotifier {
     if (_enabled) {
       final lw = _listenWeight(song, durationPlayed, completed: completed);
 
-      if (song.artist != null) {
-        _artistAffinity[song.artist!] =
-            (_artistAffinity[song.artist!] ?? 0) + lw;
+      if (song.knownArtist != null) {
+        _artistAffinity[song.knownArtist!] =
+            (_artistAffinity[song.knownArtist!] ?? 0) + lw;
         _maxArtistAffinity = null;
       }
       if (song.genre != null) {
@@ -140,9 +140,9 @@ class RecommendationService extends ChangeNotifier {
             (_genreAffinity[song.genre!] ?? 0) + lw * 0.75;
         _maxGenreAffinity = null;
       }
-      if (song.albumId != null) {
-        _albumAffinity[song.albumId!] =
-            (_albumAffinity[song.albumId!] ?? 0) + lw * 0.6;
+      if (song.knownAlbumId != null) {
+        _albumAffinity[song.knownAlbumId!] =
+            (_albumAffinity[song.knownAlbumId!] ?? 0) + lw * 0.6;
         _maxAlbumAffinity = null;
       }
 
@@ -168,9 +168,9 @@ class RecommendationService extends ChangeNotifier {
           : 1.0;
       final penalty = 0.3 * earlyFactor;
 
-      if (song.artist != null) {
-        _artistAffinity[song.artist!] =
-            (_artistAffinity[song.artist!] ?? 0) - penalty;
+      if (song.knownArtist != null) {
+        _artistAffinity[song.knownArtist!] =
+            (_artistAffinity[song.knownArtist!] ?? 0) - penalty;
         _maxArtistAffinity = null;
       }
       if (song.genre != null) {
@@ -202,9 +202,10 @@ class RecommendationService extends ChangeNotifier {
     if (_enabled) {
       final signedWeight = (rating - 3) / 2.0;
 
-      if (song.artist != null) {
-        _artistRatingAffinity[song.artist!] =
-            (_artistRatingAffinity[song.artist!] ?? 0) + signedWeight * 2.5;
+      if (song.knownArtist != null) {
+        _artistRatingAffinity[song.knownArtist!] =
+            (_artistRatingAffinity[song.knownArtist!] ?? 0) +
+                signedWeight * 2.5;
         _maxArtistRating = null;
       }
       if (song.genre != null) {
@@ -227,9 +228,9 @@ class RecommendationService extends ChangeNotifier {
 
     if (_enabled) {
       final delta = starred ? 1.0 : -0.5;
-      if (song.artist != null) {
-        _artistAffinity[song.artist!] =
-            (_artistAffinity[song.artist!] ?? 0) + delta * 2.0;
+      if (song.knownArtist != null) {
+        _artistAffinity[song.knownArtist!] =
+            (_artistAffinity[song.knownArtist!] ?? 0) + delta * 2.0;
         _maxArtistAffinity = null;
       }
       if (song.genre != null) {
@@ -262,13 +263,13 @@ class RecommendationService extends ChangeNotifier {
     final profile = _profiles[song.id];
     final hour = currentHour ?? DateTime.now().hour;
 
-    if (song.artist != null) {
+    if (song.knownArtist != null) {
       final maxA = _cachedMax(_artistAffinity, () => _maxArtistAffinity,
           (v) => _maxArtistAffinity = v);
       if (maxA > 0) {
         add(
             ScoreFactor.artist,
-            ((_artistAffinity[song.artist] ?? 0).clamp(0, maxA) / maxA) *
+            ((_artistAffinity[song.knownArtist] ?? 0).clamp(0, maxA) / maxA) *
                 _W.artistAffinity);
       }
     }
@@ -284,24 +285,24 @@ class RecommendationService extends ChangeNotifier {
       }
     }
 
-    if (song.albumId != null) {
+    if (song.knownAlbumId != null) {
       final maxAl = _cachedMax(_albumAffinity, () => _maxAlbumAffinity,
           (v) => _maxAlbumAffinity = v);
       if (maxAl > 0) {
         add(
             ScoreFactor.album,
-            ((_albumAffinity[song.albumId] ?? 0).clamp(0, maxAl) / maxAl) *
+            ((_albumAffinity[song.knownAlbumId] ?? 0).clamp(0, maxAl) / maxAl) *
                 _W.albumAffinity);
       }
     }
 
-    if (song.artist != null) {
+    if (song.knownArtist != null) {
       final maxAr = _cachedMax(_artistRatingAffinity, () => _maxArtistRating,
           (v) => _maxArtistRating = v);
       if (maxAr > 0) {
         add(
             ScoreFactor.artistRating,
-            ((_artistRatingAffinity[song.artist] ?? 0).clamp(0, maxAr) /
+            ((_artistRatingAffinity[song.knownArtist] ?? 0).clamp(0, maxAr) /
                     maxAr) *
                 _W.artistRating);
       }
@@ -760,6 +761,13 @@ class RecommendationService extends ChangeNotifier {
         _genreRatingAffinity = _parseDoubleMap(d['genreRatings']);
         _recentlyPlayed = List<String>.from(d['recent'] ?? []);
         _starredSongs = Set<String>.from(d['starred'] ?? []);
+        // Affinity stored under the placeholders pools unrelated songs, and as the largest entry it scales
+        // every other down. The placeholder artist's songs are mostly in the one placeholder album.
+        _artistAffinity.remove(Song.unknownArtist);
+        _artistRatingAffinity.remove(Song.unknownArtist);
+        for (final p in _profiles.values) {
+          if (p.artist == Song.unknownArtist) _albumAffinity.remove(p.albumId);
+        }
       } catch (e) {
         debugPrint('RecommendationService: error loading main data: $e');
       }
