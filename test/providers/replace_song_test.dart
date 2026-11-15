@@ -109,4 +109,107 @@ void main() {
       expect((await db.getSong('s2'))?.title, 'Song 2');
     });
   });
+
+  group('the saved queue', () {
+    late FakeQueueServer server;
+    late PlayerProvider player;
+    late Directory dir;
+
+    setUp(() async {
+      server = FakeQueueServer();
+      await server.start();
+      SharedPreferences.setMockInitialValues({});
+      await StorageService().init();
+      final service = SubsonicService();
+      await service.configure(ServerConfig(
+          serverUrl: 'http://127.0.0.1:${server.port}',
+          username: 'u',
+          password: 'p'));
+      player = PlayerProvider(
+          service,
+          StorageService(),
+          FakeCastService(),
+          UpnpService(),
+          MuslyAudioHandler(),
+          JukeboxService(),
+          TranscodingService());
+      dir = Directory.systemTemp.createTempSync('musly_queue_tags_');
+      await databaseFactory.setDatabasesPath(dir.path);
+    });
+
+    tearDown(() async {
+      player.dispose();
+      await server.stop();
+      await LibraryDatabaseService().close();
+      dir.deleteSync(recursive: true);
+    });
+
+    Future<void> queue(List<Song> songs, int index) async {
+      runZonedGuarded(
+          () =>
+              player.playSong(songs[index], playlist: songs, startIndex: index),
+          (_, __) {});
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+
+    // RD: the queue restored at launch keeps the copies it was saved with, so a song whose tags were fixed on the
+    // server shows its old title and artist in Now Playing for as long as it stays queued.
+    test('takes the tags the library loaded for the songs it holds', () async {
+      await queue([Song(id: 's1', title: 'Song 1'), old], 1);
+      final db = LibraryDatabaseService();
+      await db.insertSongsBatch([Song(id: 's1', title: 'Song 1'), edited]);
+      await db.insertAlbumsBatch([Album(id: 'al1', name: 'Album 1')]);
+      final library = LibraryProvider(SubsonicService(), MuslyAudioHandler());
+      player.setLibraryProvider(library);
+
+      await library.ensureLibraryLoaded();
+
+      expect(player.currentSong?.artist, 'Artist A');
+      expect(player.queue.map((s) => s.title), ['Song 1', 'Song 2']);
+    });
+
+    // RD: the tags are compared on the title alone, so a song whose only fix was its artist (a soundtrack track
+    // credited to its composer) or its album keeps the old one in the queue.
+    test('takes a fix of the title, the artist or the album alone', () async {
+      final q = [
+        Song(id: 'a', title: 'Track 1', artist: 'Composer A', album: 'Album 1'),
+        Song(
+            id: 'b',
+            title: 'Track 2',
+            artist: Song.unknownArtist,
+            album: 'Album 1'),
+        Song(
+            id: 'c',
+            title: 'Track 3',
+            artist: 'Composer A',
+            album: Song.unknownAlbum),
+      ];
+      await queue(q, 0);
+      final fixed = [
+        Song(
+            id: 'a',
+            title: 'Track One',
+            artist: 'Composer A',
+            album: 'Album 1'),
+        Song(id: 'b', title: 'Track 2', artist: 'Composer A', album: 'Album 1'),
+        Song(id: 'c', title: 'Track 3', artist: 'Composer A', album: 'Album 1'),
+      ];
+
+      player.takeLibraryTags(fixed);
+
+      expect(player.queue, [same(fixed[0]), same(fixed[1]), same(fixed[2])]);
+    });
+
+    // RD: copies the library does not know (or local files, which have no server copy) are replaced or dropped,
+    // so a queue of local files loses its songs when the library loads.
+    test('leaves songs the library does not hold, and local files', () async {
+      final local = Song(id: 's3', title: 'My Recording', isLocal: true);
+      final elsewhere = Song(id: 's4', title: 'Song 4');
+      await queue([local, elsewhere, old], 2);
+
+      player.takeLibraryTags([edited, Song(id: 's3', title: 'Server Title')]);
+
+      expect(player.queue, [same(local), same(elsewhere), same(edited)]);
+    });
+  });
 }

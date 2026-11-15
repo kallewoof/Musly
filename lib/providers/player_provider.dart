@@ -552,6 +552,7 @@ class PlayerProvider extends ChangeNotifier
 
   void setLibraryProvider(LibraryProvider libraryProvider) {
     _libraryProvider = libraryProvider;
+    libraryProvider.onSongsUpdated = takeLibraryTags;
   }
 
   void setRecommendationService(RecommendationService recommendationService) {
@@ -3084,20 +3085,48 @@ class PlayerProvider extends ChangeNotifier
 
   /// Puts the server's current copy of a song in place of the queue's copies after its tags were edited, and
   /// republishes the lock screen's details when it is the current song.
-  void replaceSong(Song song) {
-    final current = _currentSong?.id == song.id;
-    if (current) _currentSong = song;
+  void replaceSong(Song song) => _replaceSongs({song.id: song});
+
+  /// The queue keeps copies of its songs, saved with it and restored at launch, so tags fixed on the server reach
+  /// those copies only from here: each copy whose tags differ from the library's song takes it.
+  void takeLibraryTags(List<Song> library) {
+    final byId = {for (final s in library) s.id: s};
+    final changed = <String, Song>{};
+    for (final queued in [..._queue, if (_currentSong != null) _currentSong!]) {
+      final fresh = byId[queued.id];
+      if (fresh != null && !queued.isLocal && !_sameTags(queued, fresh)) {
+        changed[fresh.id] = fresh;
+      }
+    }
+    if (changed.isNotEmpty) _replaceSongs(changed);
+  }
+
+  static bool _sameTags(Song a, Song b) =>
+      a.title == b.title &&
+      a.artist == b.artist &&
+      a.album == b.album &&
+      a.albumId == b.albumId &&
+      a.artistId == b.artistId &&
+      a.genre == b.genre &&
+      a.year == b.year &&
+      a.track == b.track &&
+      a.coverArt == b.coverArt;
+
+  void _replaceSongs(Map<String, Song> songs) {
+    final current = songs[_currentSong?.id];
+    if (current != null) _currentSong = current;
     var inQueue = false;
     for (var i = 0; i < _queue.length; i++) {
-      if (_queue[i].id == song.id) {
-        _queue[i] = song;
+      final fresh = songs[_queue[i].id];
+      if (fresh != null) {
+        _queue[i] = fresh;
         inQueue = true;
       }
     }
-    if (!current && !inQueue) return;
+    if (current == null && !inQueue) return;
     notifyListeners();
     unawaited(_saveQueueStateImmediate());
-    if (current) {
+    if (current != null) {
       _updateAndroidAuto();
       _updateAllServices();
     }

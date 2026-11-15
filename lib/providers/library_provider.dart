@@ -162,6 +162,10 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
     return _mergedAlbumsCache!;
   }
 
+  /// Called with the library's songs when they are loaded from the cache and when they are refreshed from the
+  /// server, so copies kept elsewhere (the player's saved queue) can take their current tags.
+  void Function(List<Song> songs)? onSongsUpdated;
+
   /// Puts the server's current copy of a song in place of the cached one, in memory and in the library
   /// database, after its tags were edited.
   Future<void> replaceSong(Song song) async {
@@ -366,6 +370,7 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
         try {
           _cachedAllAlbums = await _db.getAllAlbums();
           _cachedAllSongs = await _db.getAllSongs();
+          onSongsUpdated?.call(_cachedAllSongs);
         } catch (_) {}
       }
 
@@ -491,6 +496,7 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
 
       await _saveCachedData();
       notifyListeners();
+      onSongsUpdated?.call(_cachedAllSongs);
     } catch (e) {
       debugPrint('[LibraryProvider] _refreshAllDataInBackground error: $e');
     } finally {
