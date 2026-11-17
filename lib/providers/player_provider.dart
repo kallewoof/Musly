@@ -46,6 +46,9 @@ enum RepeatMode { off, all, one }
 /// What keeps a queue going when it runs low.
 enum QueueRefill { none, radio, smartShuffle }
 
+/// The shuffle button's states, in the order it steps through them.
+enum ShuffleState { off, shuffle, smart }
+
 class PlayerProvider extends ChangeNotifier
     with WidgetsBindingObserver
     implements AndroidAutoDelegate {
@@ -2366,6 +2369,13 @@ class PlayerProvider extends ChangeNotifier
         playlist: picks, startIndex: 0, keepRefill: true);
   }
 
+  /// Ends Smart Shuffle: the queue stays and plays out, without new picks added.
+  void stopSmartShuffle() {
+    if (_refill != QueueRefill.smartShuffle) return;
+    _refill = QueueRefill.none;
+    notifyListeners();
+  }
+
   /// Picks that leave out songs played recently and, for a refill, the queue itself. A queue being replaced
   /// is not left out: after a whole-library shuffle it holds every song.
   List<Song> _smartShufflePicks(int count,
@@ -2474,6 +2484,27 @@ class PlayerProvider extends ChangeNotifier
     _storageService.saveShuffleMode(_shuffleEnabled);
     notifyListeners();
     _updateAllServices();
+  }
+
+  ShuffleState get shuffleState => isSmartShuffle
+      ? ShuffleState.smart
+      : _shuffleEnabled
+          ? ShuffleState.shuffle
+          : ShuffleState.off;
+
+  /// The shuffle button: off, then shuffle (the current queue), then Smart Shuffle (a new queue of picks), then off
+  /// again, with Smart Shuffle stopped and its queue left to play out in order.
+  Future<void> cycleShuffle() async {
+    switch (shuffleState) {
+      case ShuffleState.off:
+        toggleShuffle(forceValue: true);
+      case ShuffleState.shuffle:
+        toggleShuffle(forceValue: false);
+        await smartShuffle();
+      case ShuffleState.smart:
+        if (_shuffleEnabled) toggleShuffle(forceValue: false);
+        stopSmartShuffle();
+    }
   }
 
   void setRepeatModeIndex(int? idx) {

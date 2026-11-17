@@ -155,4 +155,56 @@ void main() {
     expect(player.queue.map((s) => s.id).toList(), queued);
     expect(ids(), order);
   });
+
+  // RD: the shuffle button skips a state, or reaching Smart Shuffle leaves the plain shuffle flag on, so the next
+  // tap lands on Shuffle instead of Off; or turning Smart Shuffle off discards the queue that is playing.
+  test(
+      'the shuffle button steps off, shuffle, Smart Shuffle, then off with the queue kept',
+      () async {
+    // After the player's start-up, which loads the saved shuffle setting over anything set before it.
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(player.shuffleState, ShuffleState.off);
+
+    await player.cycleShuffle();
+    expect(player.shuffleState, ShuffleState.shuffle);
+
+    await start(player.cycleShuffle);
+    expect(player.shuffleState, ShuffleState.smart);
+    expect(player.queue, hasLength(10));
+    final picks = ids();
+
+    await player.cycleShuffle();
+    expect(player.shuffleState, ShuffleState.off);
+    expect(player.shuffleEnabled, isFalse);
+    expect(ids(), picks);
+  });
+
+  // RD: Smart Shuffle started from the Library while shuffle is on shows as Smart Shuffle, but one tap only stops
+  // the refill and leaves plain shuffle on.
+  test('one tap turns off a Smart Shuffle started with shuffle on', () async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    player.toggleShuffle(forceValue: true);
+    await start(player.smartShuffle);
+    expect(player.shuffleState, ShuffleState.smart);
+
+    await player.cycleShuffle();
+
+    expect(player.shuffleState, ShuffleState.off);
+  });
+
+  // RD: Smart Shuffle reached from Shuffle leaves plain shuffle on underneath, so the next album played comes out
+  // shuffled although the button last showed Smart Shuffle.
+  test(
+      'playing another queue after Smart Shuffle from the button leaves shuffle off',
+      () async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await player.cycleShuffle();
+    await start(player.cycleShuffle);
+    expect(player.shuffleState, ShuffleState.smart);
+
+    final album = library.songs.take(3).toList();
+    await start(() => player.playSong(album.first, playlist: album));
+
+    expect(player.shuffleState, ShuffleState.off);
+  });
 }

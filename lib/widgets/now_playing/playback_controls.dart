@@ -8,6 +8,9 @@ class PlaybackControls extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onPrevious;
   final bool isShuffleEnabled;
+
+  /// Smart Shuffle is on: the shuffle button shows its icon, active.
+  final bool isSmartShuffle;
   final VoidCallback onShuffleToggle;
   final RepeatMode? repeatMode;
   final bool? isRepeatEnabled;
@@ -21,6 +24,7 @@ class PlaybackControls extends StatelessWidget {
     required this.onNext,
     required this.onPrevious,
     required this.isShuffleEnabled,
+    this.isSmartShuffle = false,
     required this.onShuffleToggle,
     this.repeatMode,
     this.isRepeatEnabled,
@@ -45,17 +49,22 @@ class PlaybackControls extends StatelessWidget {
         : Icons.repeat_rounded;
 
     final themePrimary = Theme.of(context).colorScheme.primary;
-    final effectiveActiveColor = (accentColor == Colors.white ||
-            accentColor.computeLuminance() > 0.85)
-        ? (themePrimary != Colors.white ? themePrimary : const Color(0xFFFA243C))
-        : accentColor;
+    final effectiveActiveColor =
+        (accentColor == Colors.white || accentColor.computeLuminance() > 0.85)
+            ? (themePrimary != Colors.white
+                ? themePrimary
+                : const Color(0xFFFA243C))
+            : accentColor;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _SecondaryControlButton(
-          icon: Icons.shuffle_rounded,
-          isActive: isShuffleEnabled,
+          key: const ValueKey('shuffle-button'),
+          icon: isSmartShuffle
+              ? Icons.auto_awesome_rounded
+              : Icons.shuffle_rounded,
+          isActive: isShuffleEnabled || isSmartShuffle,
           activeColor: effectiveActiveColor,
           onTap: onShuffleToggle,
         ),
@@ -188,6 +197,7 @@ class _SecondaryControlButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const _SecondaryControlButton({
+    super.key,
     required this.icon,
     required this.isActive,
     required this.activeColor,

@@ -433,20 +433,22 @@ class _MiniPlayerControls extends StatelessWidget {
                             },
                           ),
                         if (showShuffle && !isRadio)
-                          Selector<PlayerProvider, bool>(
-                            selector: (_, p) => p.shuffleEnabled,
-                            builder: (context, shuffleEnabled, _) {
+                          Selector<PlayerProvider, ShuffleState>(
+                            selector: (_, p) => p.shuffleState,
+                            builder: (context, shuffleState, _) {
                               return IconButton(
-                                onPressed: provider.toggleShuffle,
+                                onPressed: provider.cycleShuffle,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
                                     minWidth: 36, minHeight: 36),
                                 icon: Icon(
-                                  CupertinoIcons.shuffle,
+                                  shuffleState == ShuffleState.smart
+                                      ? Icons.auto_awesome_rounded
+                                      : CupertinoIcons.shuffle,
                                   size:
                                       ScreenHelper.miniPlayerIconSize(context),
                                 ),
-                                color: shuffleEnabled
+                                color: shuffleState != ShuffleState.off
                                     ? Theme.of(context).colorScheme.primary
                                     : color,
                               );

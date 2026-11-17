@@ -472,16 +472,17 @@ class _PlayerControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<PlayerProvider, (bool, bool, bool, bool, RepeatMode)>(
+    return Selector<PlayerProvider,
+        (bool, ShuffleState, bool, bool, RepeatMode)>(
       selector: (_, p) => (
         p.isPlaying,
-        p.shuffleEnabled,
+        p.shuffleState,
         p.hasPrevious,
         p.hasNext,
         p.repeatMode,
       ),
       builder: (context, data, _) {
-        final (isPlaying, shuffleEnabled, hasPrevious, hasNext, repeatMode) =
+        final (isPlaying, shuffleState, hasPrevious, hasNext, repeatMode) =
             data;
         final provider = context.read<PlayerProvider>();
 
@@ -489,13 +490,16 @@ class _PlayerControls extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TvFocusableCard(
-              onTap: provider.toggleShuffle,
+              key: const ValueKey('shuffle-button'),
+              onTap: provider.cycleShuffle,
               borderRadius: BorderRadius.circular(20),
               padding: const EdgeInsets.all(8),
               child: Icon(
-                Icons.shuffle_rounded,
+                shuffleState == ShuffleState.smart
+                    ? Icons.auto_awesome_rounded
+                    : Icons.shuffle_rounded,
                 size: 18,
-                color: shuffleEnabled
+                color: shuffleState != ShuffleState.off
                     ? const Color(0xFFFA243C)
                     : const Color(0xFFB3B3B3),
               ),

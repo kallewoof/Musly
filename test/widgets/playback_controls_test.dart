@@ -142,4 +142,37 @@ void main() {
       expect(iconWidget.color, const Color(0xFFFA243C));
     });
   });
+
+  // RD: the shuffle button looks the same in Smart Shuffle as in plain shuffle (or as off), so nothing on Now
+  // Playing tells the user which one is running.
+  testWidgets('shows the Smart Shuffle icon, active, while Smart Shuffle is on', (tester) async {
+    Future<Icon> shuffleIcon({required bool shuffle, required bool smart}) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: PlaybackControls(
+            isPlaying: false,
+            isShuffleEnabled: shuffle,
+            isSmartShuffle: smart,
+            repeatMode: RepeatMode.off,
+            onPlayPause: () {},
+            onNext: () {},
+            onPrevious: () {},
+            onShuffleToggle: () {},
+            onRepeatToggle: () {},
+          ),
+        ),
+      ));
+      return tester.widget<Icon>(
+          find.descendant(of: find.byKey(const ValueKey('shuffle-button')), matching: find.byType(Icon)).first);
+    }
+
+    final off = await shuffleIcon(shuffle: false, smart: false);
+    final plain = await shuffleIcon(shuffle: true, smart: false);
+    final smart = await shuffleIcon(shuffle: false, smart: true);
+
+    expect([off.icon, plain.icon, smart.icon],
+        [Icons.shuffle_rounded, Icons.shuffle_rounded, Icons.auto_awesome_rounded]);
+    expect(smart.color, plain.color, reason: 'active like plain shuffle');
+    expect(smart.color, isNot(off.color));
+  });
 }

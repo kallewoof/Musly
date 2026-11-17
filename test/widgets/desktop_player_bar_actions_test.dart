@@ -25,6 +25,26 @@ class _NoTagOverlayService extends SubsonicService {
   Future<bool> supportsTagOverlay() async => false;
 }
 
+/// A player whose shuffle button state the test sets, counting the button's taps.
+class _ShufflePlayer extends PlayerProvider {
+  _ShufflePlayer(SubsonicService s)
+      : super(s, StorageService(), FakeCastService(), UpnpService(),
+            MuslyAudioHandler(), JukeboxService(), TranscodingService());
+
+  ShuffleState state = ShuffleState.off;
+  int cycles = 0;
+
+  @override
+  ShuffleState get shuffleState => state;
+
+  @override
+  Future<void> cycleShuffle() async {
+    cycles++;
+    state = ShuffleState.values[(state.index + 1) % ShuffleState.values.length];
+    notifyListeners();
+  }
+}
+
 void main() {
   initializeTestEnvironment();
 
@@ -32,6 +52,8 @@ void main() {
     late SubsonicService subsonicService;
     late PlayerProvider playerProvider;
     late LibraryProvider libraryProvider;
+    // Built here, outside the tests' fake time, where the player's own timer would be left pending.
+    late _ShufflePlayer shufflePlayer;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
@@ -55,6 +77,7 @@ void main() {
         subsonicService,
         MuslyAudioHandler(),
       );
+      shufflePlayer = _ShufflePlayer(subsonicService);
     });
 
     tearDownAll(() {
@@ -85,8 +108,9 @@ void main() {
           playerProvider: playerProvider,
           libraryProvider: libraryProvider,
           subsonicService: subsonicService,
-          child: ChangeNotifierProvider<TvDetectionService>(
-            create: (_) => TvDetectionService(),
+          child: ChangeNotifierProvider<TvDetectionService>.value(
+            // A singleton: a provider that created it would dispose it for the tests after this one.
+            value: TvDetectionService(),
             child: const SizedBox(
               height: 90,
               child: DesktopPlayerBar(),
@@ -118,6 +142,44 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Add to Playlist'), findsWidgets);
+    });
+
+    // RD: the desktop bar keeps the two-state shuffle button: it shows Smart Shuffle as plain shuffle, and a tap
+    // toggles plain shuffle instead of stepping to the next state.
+    testWidgets('steps the shuffle button through its states, showing Smart Shuffle',
+        (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      final player = shufflePlayer;
+      libraryProvider.setServerOfflineMode(true);
+      player.playSong(Song(id: 's1', title: 'Song 1', duration: 210));
+
+      await tester.pumpWidget(createTestApp(
+        playerProvider: player,
+        libraryProvider: libraryProvider,
+        subsonicService: subsonicService,
+        child: ChangeNotifierProvider<TvDetectionService>.value(
+          value: TvDetectionService(),
+          child: const SizedBox(height: 90, child: DesktopPlayerBar()),
+        ),
+      ));
+      await tester.pump(const Duration(seconds: 1));
+      IconData icon() => tester
+          .widget<Icon>(find.descendant(
+              of: find.byKey(const ValueKey('shuffle-button')),
+              matching: find.byType(Icon)))
+          .icon!;
+
+      expect(icon(), Icons.shuffle_rounded);
+      await tester.tap(find.byKey(const ValueKey('shuffle-button')));
+      await tester.tap(find.byKey(const ValueKey('shuffle-button')));
+      await tester.pump();
+
+      expect(player.cycles, 2);
+      expect(icon(), Icons.auto_awesome_rounded);
+
+      // playSong leaves a 1.2 s timer of its own.
+      await tester.pump(const Duration(seconds: 2));
     });
   });
 }
