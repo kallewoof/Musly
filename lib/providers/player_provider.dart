@@ -2250,8 +2250,12 @@ class PlayerProvider extends ChangeNotifier
       _checkAndRefillAutoQueue().catchError((_) {});
     }
 
+    // A queue that refills itself (Smart Shuffle, a song radio) is already in the order it was picked. Jumping
+    // within it at random keeps replaying the same songs and rarely reaches the end, where the refill comes.
+    final shuffleHere = _shuffleEnabled && _queue.length > 1 && !_isRadioQueue;
+
     if (_concatenatingSource != null && !_isRenderingRemotely) {
-      if (_shuffleEnabled && _queue.length > 1) {
+      if (shuffleHere) {
         _shuffleHistory.add(_currentSong!.id);
         if (_shuffleHistory.length > 50) _shuffleHistory.removeAt(0);
         int next;
@@ -2272,7 +2276,7 @@ class PlayerProvider extends ChangeNotifier
       return;
     }
 
-    if (_shuffleEnabled && _queue.length > 1) {
+    if (shuffleHere) {
       _shuffleHistory.add(_currentSong!.id);
       if (_shuffleHistory.length > 50) _shuffleHistory.removeAt(0);
       int next;
@@ -2450,7 +2454,11 @@ class PlayerProvider extends ChangeNotifier
   void toggleShuffle({bool? forceValue}) {
     _shuffleEnabled = forceValue ?? !_shuffleEnabled;
     _shuffleHistory.clear();
-    if (_shuffleEnabled && _queue.length > 1 && _currentSong != null) {
+    // A refilling queue keeps its order, which has songs already played before the current one (see skipNext).
+    if (_shuffleEnabled &&
+        !_isRadioQueue &&
+        _queue.length > 1 &&
+        _currentSong != null) {
       final currentSong = _currentSong!;
       _queue.shuffle();
       _queue.remove(currentSong);

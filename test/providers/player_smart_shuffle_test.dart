@@ -117,4 +117,42 @@ void main() {
     await start(() => player.playSong(album.first, playlist: album));
     expect(player.isRadioQueue, isFalse);
   });
+
+  // RD: the shuffle toggle makes skips jump at random within the Smart Shuffle queue, so the same ten songs come
+  // round again and again and the queue rarely reaches its end, where the next picks are added.
+  test(
+      'plays Smart Shuffle in order with the shuffle toggle on, refilling instead of repeating',
+      () async {
+    // After the player's start-up, which loads the saved shuffle setting over anything set before it.
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    player.toggleShuffle(forceValue: true);
+    await start(player.smartShuffle);
+    expect(player.shuffleEnabled, isTrue);
+
+    final heard = [player.currentSong!.id];
+    for (var i = 0; i < 14; i++) {
+      // Without the gapless source a skip moves through playSong, which tests can follow; each playSong builds a
+      // new one.
+      player.debugGaplessSource = null;
+      await start(player.skipNext);
+      heard.add(player.currentSong!.id);
+    }
+
+    expect(heard.toSet(), hasLength(15), reason: 'no song twice: $heard');
+    expect(player.queue.length, greaterThan(10));
+  });
+
+  // RD: turning shuffle on during Smart Shuffle reshuffles its queue, putting songs already heard back ahead of
+  // the current one.
+  test('keeps a Smart Shuffle queue in its order when shuffle is turned on',
+      () async {
+    await start(player.smartShuffle);
+    final order = ids();
+    final queued = player.queue.map((s) => s.id).toList();
+
+    player.toggleShuffle(forceValue: true);
+
+    expect(player.queue.map((s) => s.id).toList(), queued);
+    expect(ids(), order);
+  });
 }
