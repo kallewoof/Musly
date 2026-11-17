@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/widgets/common/album_artwork.dart';
+import 'package:musly/widgets/now_playing/pick_reason_list.dart';
 import 'package:musly/utils/navigation_helper.dart';
 
 class RightSidebar extends StatelessWidget {
@@ -153,6 +154,9 @@ class RightSidebar extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                  if (player.currentPickReason
+                                      case final reason?)
+                                    PickReasonList(reason: reason),
                                 ],
                               ),
                             ),
