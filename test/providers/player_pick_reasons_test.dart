@@ -69,7 +69,8 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
 
-  // RD: the top-ups are queued without their draws, so "why?" disappears after the first ten Smart Shuffle songs.
+  // RD: the top-ups are queued without their draws, so "why?" disappears after the first ten Smart Shuffle songs; or
+  // a top-up replaces the reasons of the songs queued before it.
   test('explains Smart Shuffle picks, the top-ups included', () async {
     await start(player.smartShuffle);
     expect(player.currentPickReason, isA<ShufflePick>());
@@ -80,6 +81,10 @@ void main() {
 
     expect(player.queue, hasLength(20));
     expect(player.currentPickReason, isA<ShufflePick>());
+
+    await start(() => player.adoptTrackAt(3));
+    expect(player.currentPickReason, isA<ShufflePick>(),
+        reason: 'a top-up keeps the reasons of the songs queued before it');
   });
 
   // RD: a new queue keeps the reasons of the one it replaced, so a song from an album shows why a mix picked it.

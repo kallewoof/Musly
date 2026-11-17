@@ -226,4 +226,50 @@ void main() {
       expect(polluted[f], closeTo(clean[f]!, 1e-9), reason: '$f');
     }
   });
+
+  // RD: a skip is not remembered as heard, so Smart Shuffle offers the song again straight away; or skips go into
+  // the played list, and "Listen Again" offers the songs the user just skipped.
+  test('remembers a skipped song as heard, but not as played', () async {
+    final s = Song(id: 'k1', title: 'T');
+
+    await model.trackSkip(s);
+
+    expect(model.recentlyHeard(), contains('k1'));
+    expect(model.recentlyPlayed, isNot(contains('k1')));
+  });
+
+  // RD: the cooldown uses only the count, so a song heard an hour ago is offered again after a few hundred quick
+  // skips; or only the time, so on a day of listening the same song returns after 24 hours however much else played.
+  test('keeps a song out while within the last 200 heard or the last 24 hours',
+      () async {
+    var now = DateTime(2026, 11, 17, 8);
+    model.clock = () => now;
+    await model.trackSkip(Song(id: 'early', title: 'T'));
+    for (var i = 0; i < 250; i++) {
+      now = now.add(const Duration(minutes: 1));
+      await model.trackSkip(Song(id: 'later$i', title: 'T'));
+    }
+
+    expect(model.recentlyHeard(), contains('early'),
+        reason: 'heard within 24 hours, though 250 songs ago');
+
+    now = now.add(const Duration(hours: 25));
+    final heard = model.recentlyHeard();
+    expect(heard, isNot(contains('early')));
+    expect(heard, contains('later50'),
+        reason: 'among the last 200, though over 24 hours ago');
+    expect(heard, isNot(contains('later49')));
+  });
+
+  // RD: the heard list is not saved, so after a restart the songs skipped before it come straight back.
+  test('keeps the heard songs across a restart', () async {
+    await model.trackSkip(Song(id: 'k1', title: 'T'));
+    await Future<void>.delayed(const Duration(seconds: 3));
+
+    final restarted = RecommendationService();
+    await restarted.initialize();
+    addTearDown(restarted.dispose);
+
+    expect(restarted.recentlyHeard(), contains('k1'));
+  });
 }

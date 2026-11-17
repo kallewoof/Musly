@@ -48,6 +48,14 @@ class RecommendationService extends ChangeNotifier {
   Map<String, int> _skipCounts = {};
   Map<int, Map<String, double>> _timePatterns = {};
   List<String> _recentlyPlayed = [];
+
+  /// Songs heard here, played or skipped, newest first, for Smart Shuffle's cooldown. Kept apart from
+  /// [_recentlyPlayed], which feeds "Listen Again" and must not list skipped songs.
+  List<({String id, DateTime at})> _heard = [];
+  static const _heardKept = 1000;
+
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
   Set<String> _starredSongs = {};
 
   final Map<String, int> _recentIndex = {};
@@ -70,6 +78,26 @@ class RecommendationService extends ChangeNotifier {
   bool get enabled => _enabled;
   Map<String, SongProfile> get profiles => Map.unmodifiable(_profiles);
   List<String> get recentlyPlayed => List.unmodifiable(_recentlyPlayed);
+
+  /// Songs played or skipped here that Smart Shuffle leaves out: the last [count] heard, and any heard within
+  /// [within], whichever reaches further back. Newest first, so a caller short of songs can let the oldest back.
+  List<String> recentlyHeard(
+      {int count = 200, Duration within = const Duration(hours: 24)}) {
+    final since = clock().subtract(within);
+    final out = <String>[];
+    final seen = <String>{};
+    for (var i = 0; i < _heard.length; i++) {
+      final h = _heard[i];
+      if (i >= count && h.at.isBefore(since)) break;
+      if (seen.add(h.id)) out.add(h.id);
+    }
+    return out;
+  }
+
+  void _noteHeard(String id) {
+    _heard.insert(0, (id: id, at: clock()));
+    if (_heard.length > _heardKept) _heard = _heard.sublist(0, _heardKept);
+  }
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
@@ -120,6 +148,7 @@ class RecommendationService extends ChangeNotifier {
     profile.addPlay(
         durationPlayed: durationPlayed, completed: completed, hour: hour);
 
+    _noteHeard(id);
     _recentlyPlayed.remove(id);
     _recentlyPlayed.insert(0, id);
     if (_recentlyPlayed.length > 500) {
@@ -159,6 +188,7 @@ class RecommendationService extends ChangeNotifier {
 
   Future<void> trackSkip(Song song, {int secondsPlayed = 0}) async {
     final id = song.id;
+    _noteHeard(id);
     _skipCounts[id] = (_skipCounts[id] ?? 0) + 1;
     _profiles[id]?.skipCount++;
 
@@ -760,6 +790,13 @@ class RecommendationService extends ChangeNotifier {
         _artistRatingAffinity = _parseDoubleMap(d['artistRatings']);
         _genreRatingAffinity = _parseDoubleMap(d['genreRatings']);
         _recentlyPlayed = List<String>.from(d['recent'] ?? []);
+        _heard = [
+          for (final h in (d['heard'] as List<dynamic>? ?? const []))
+            (
+              id: (h as List<dynamic>)[0] as String,
+              at: DateTime.fromMillisecondsSinceEpoch(h[1] as int)
+            )
+        ];
         _starredSongs = Set<String>.from(d['starred'] ?? []);
         // Affinity stored under the placeholders pools unrelated songs, and as the largest entry it scales
         // every other down. The placeholder artist's songs are mostly in the one placeholder album.
@@ -812,6 +849,9 @@ class RecommendationService extends ChangeNotifier {
         'genres': _genreAffinity,
         'albums': _albumAffinity,
         'recent': _recentlyPlayed,
+        'heard': [
+          for (final h in _heard) [h.id, h.at.millisecondsSinceEpoch]
+        ],
         'starred': _starredSongs.toList(),
         'artistRatings': _artistRatingAffinity,
         'genreRatings': _genreRatingAffinity,

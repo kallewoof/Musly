@@ -2376,29 +2376,40 @@ class PlayerProvider extends ChangeNotifier
     notifyListeners();
   }
 
-  /// Picks that leave out songs played recently and, for a refill, the queue itself. A queue being replaced
-  /// is not left out: after a whole-library shuffle it holds every song.
+  /// Picks that leave out the songs heard lately, played or skipped (RecommendationService.recentlyHeard), and for
+  /// a refill the queue itself. A queue being replaced is not left out: after a whole-library shuffle it holds every
+  /// song. When too few songs are left, the ones heard longest ago come back first, so a small library still plays.
   List<Song> _smartShufflePicks(int count,
       {bool startingQueue = false, Map<String, PickReason>? reasons}) {
     final rec = _recommendationService;
-    return _smartShuffle.pick(
-      _libraryProvider?.cachedAllSongs ?? const [],
-      count,
-      exclude: {
-        if (!startingQueue) ..._queue.map((s) => s.id),
-        ...?rec?.recentlyPlayed.take(100),
-      },
-      outcomes: rec?.listenOutcomes ??
-          (s) => (completes: s.completeCount ?? 0, skips: s.skipCount ?? 0),
-      recentArtists: startingQueue
-          ? const []
-          : [
-              for (final s in _queue
-                  .skip(max(0, _queue.length - SmartShuffle.artistGap)))
-                s.knownArtist
-            ],
-      reasons: reasons,
-    );
+    final heard = rec?.recentlyHeard() ?? const <String>[];
+    var picked = <String, PickReason>{};
+    List<Song> pick(int keepOut) => _smartShuffle.pick(
+          _libraryProvider?.cachedAllSongs ?? const [],
+          count,
+          exclude: {
+            if (!startingQueue) ..._queue.map((s) => s.id),
+            ...heard.take(keepOut),
+          },
+          outcomes: rec?.listenOutcomes ??
+              (s) => (completes: s.completeCount ?? 0, skips: s.skipCount ?? 0),
+          recentArtists: startingQueue
+              ? const []
+              : [
+                  for (final s in _queue
+                      .skip(max(0, _queue.length - SmartShuffle.artistGap)))
+                    s.knownArtist
+                ],
+          reasons: picked = {},
+        );
+    var keepOut = heard.length;
+    var picks = pick(keepOut);
+    while (picks.length < count && keepOut > 0) {
+      keepOut ~/= 2;
+      picks = pick(keepOut);
+    }
+    reasons?.addAll(picked);
+    return picks;
   }
 
   Future<void> skipPrevious() async {

@@ -6,6 +6,7 @@ import 'package:musly/providers/library_provider.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/services/audio_handler.dart';
 import 'package:musly/services/jukebox_service.dart';
+import 'package:musly/services/recommendation_service.dart';
 import 'package:musly/services/storage_service.dart';
 import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/services/transcoding_service.dart';
@@ -206,5 +207,42 @@ void main() {
     await start(() => player.playSong(album.first, playlist: album));
 
     expect(player.shuffleState, ShuffleState.off);
+  });
+
+  Future<RecommendationService> listenedTo(List<Song> skipped) async {
+    final rec = RecommendationService();
+    await rec.initialize();
+    addTearDown(rec.dispose);
+    for (final s in skipped) {
+      await rec.trackSkip(s);
+    }
+    player.setRecommendationService(rec);
+    return rec;
+  }
+
+  // RD: Smart Shuffle leaves out only songs played to the end, so songs the user just skipped are offered again
+  // in the next queue.
+  test('leaves out the songs just skipped', () async {
+    final skipped = library.songs.take(20).toList();
+    await listenedTo(skipped);
+
+    await start(player.smartShuffle);
+
+    expect(player.queue, hasLength(10));
+    expect(ids().intersection(skipped.map((s) => s.id).toSet()), isEmpty);
+  });
+
+  // RD: the cooldown leaves a small library with nothing to play, or lets back the songs heard last instead of the
+  // ones heard longest ago.
+  test('fills the queue from the songs heard longest ago when too few are left',
+      () async {
+    final heard = library.songs.take(25).toList();
+    await listenedTo(heard);
+
+    await start(player.smartShuffle);
+
+    expect(player.queue, hasLength(10));
+    final heardLast = heard.reversed.take(12).map((s) => s.id).toSet();
+    expect(ids().intersection(heardLast), isEmpty);
   });
 }
