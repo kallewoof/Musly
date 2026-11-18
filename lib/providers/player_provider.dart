@@ -176,6 +176,8 @@ class PlayerProvider extends ChangeNotifier
   static const String _keyQueueIndex = 'persistent_queue_index';
   static const String _keyQueueSongId = 'persistent_queue_song_id';
   static const String _keyQueuePosition = 'persistent_queue_position_ms';
+  static const String _keyQueueRefill = 'persistent_queue_refill';
+  static const String _keyQueueReasons = 'persistent_queue_reasons';
 
   late final PlayQueueSync _queueSync = PlayQueueSync(_subsonicService);
   Timer? _queueSyncTimer;
@@ -332,6 +334,11 @@ class PlayerProvider extends ChangeNotifier
       await _prefs!.setInt(_keyQueueIndex, _currentIndex);
       await _prefs!.setString(_keyQueueSongId, _currentSong?.id ?? '');
       await _prefs!.setInt(_keyQueuePosition, _position.inMilliseconds);
+      await _prefs!.setString(_keyQueueRefill, _refill.name);
+      await _prefs!.setString(
+          _keyQueueReasons,
+          jsonEncode(
+              _pickReasons.map((id, reason) => MapEntry(id, reason.toJson()))));
       debugPrint(
           'Queue state saved: index $_currentIndex, position $_position');
     } catch (e) {
@@ -375,6 +382,8 @@ class PlayerProvider extends ChangeNotifier
       _currentIndex = targetIndex;
       _currentSong = restoredSongs[targetIndex];
       _position = Duration(milliseconds: savedPositionMs);
+      _refill = _restoredRefill();
+      _pickReasons = _restoredReasons();
       final songDurationSecs = restoredSongs[targetIndex].duration;
       if (songDurationSecs != null && songDurationSecs > 0) {
         _duration = Duration(seconds: songDurationSecs);
@@ -385,6 +394,31 @@ class PlayerProvider extends ChangeNotifier
     } catch (e) {
       debugPrint('Error restoring queue state: $e');
     }
+  }
+
+  QueueRefill _restoredRefill() {
+    final name = _prefs!.getString(_keyQueueRefill);
+    if (name == null) return QueueRefill.none;
+    final refill = QueueRefill.values.asNameMap()[name];
+    if (refill == null) {
+      debugPrint('Saved queue refill "$name" is unknown; the queue will not refill');
+    }
+    return refill ?? QueueRefill.none;
+  }
+
+  /// A reason that cannot be read is left out, with its song shown without one.
+  Map<String, PickReason> _restoredReasons() {
+    final raw = _prefs!.getString(_keyQueueReasons);
+    if (raw == null) return {};
+    final reasons = <String, PickReason>{};
+    (jsonDecode(raw) as Map<String, dynamic>).forEach((id, json) {
+      try {
+        reasons[id] = PickReason.fromJson(json as Map<String, dynamic>);
+      } catch (e) {
+        debugPrint('Saved pick reason for $id unreadable: $e');
+      }
+    });
+    return reasons;
   }
 
   /// A loaded source has the previous server address baked into its URLs. While paused it is dropped, so
@@ -2374,6 +2408,7 @@ class PlayerProvider extends ChangeNotifier
     if (_refill != QueueRefill.smartShuffle) return;
     _refill = QueueRefill.none;
     notifyListeners();
+    _saveQueueState();
   }
 
   /// Picks that leave out the songs heard lately, played or skipped (RecommendationService.recentlyHeard), and for

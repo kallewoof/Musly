@@ -2,6 +2,63 @@
 /// still explain the pick after later listens have moved the scores.
 sealed class PickReason {
   const PickReason();
+
+  /// Kept with the saved queue, so a queue restored at launch still explains its songs.
+  Map<String, Object?> toJson() => switch (this) {
+        ScoredPick(:final terms, :final jitter) => {
+            'kind': 'scored',
+            'terms': [
+              for (final t in terms) [t.factor.name, t.value, t.count],
+            ],
+            'jitter': jitter,
+          },
+        TopHitPick(:final plays) => {'kind': 'topHit', 'plays': plays},
+        ListenAgainPick() => {'kind': 'listenAgain'},
+        ShufflePick p => {
+            'kind': 'shuffle',
+            'completes': p.completes,
+            'skips': p.skips,
+            'starred': p.starred,
+            'artistMean': p.artistMean,
+            'draw': p.draw,
+            'typical': p.typical,
+          },
+        RadioPick p => {
+            'kind': 'radio',
+            'seedTitle': p.seedTitle,
+            'source': p.source.name,
+          },
+      };
+
+  /// Reads what [toJson] wrote; throws on anything else.
+  static PickReason fromJson(Map<String, dynamic> j) {
+    double d(Object? v) => (v as num).toDouble();
+    return switch (j['kind']) {
+      'scored' => ScoredPick(
+          terms: [
+            for (final t in j['terms'] as List)
+              ScoreTerm(ScoreFactor.values.byName(t[0] as String), d(t[1]),
+                  t[2] as num?),
+          ],
+          jitter: d(j['jitter']),
+        ),
+      'topHit' => TopHitPick(j['plays'] as int),
+      'listenAgain' => const ListenAgainPick(),
+      'shuffle' => ShufflePick(
+          completes: j['completes'] as int,
+          skips: j['skips'] as int,
+          starred: j['starred'] as bool,
+          artistMean: j['artistMean'] == null ? null : d(j['artistMean']),
+          draw: d(j['draw']),
+          typical: d(j['typical']),
+        ),
+      'radio' => RadioPick(
+          seedTitle: j['seedTitle'] as String,
+          source: RadioSource.values.byName(j['source'] as String),
+        ),
+      final kind => throw FormatException('unknown pick reason kind: $kind'),
+    };
+  }
 }
 
 /// The parts of a recommendation score (`RecommendationService.scoreTerms`).

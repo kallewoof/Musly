@@ -138,4 +138,48 @@ void main() {
     radio = player.currentPickReason as RadioPick;
     expect(radio.source, RadioSource.random);
   });
+
+  /// A second player on the same storage: Musly started again.
+  Future<PlayerProvider> restart() async {
+    // Past the 200 ms debounce of the queue save.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final again = PlayerProvider(
+        SubsonicService(),
+        StorageService(),
+        FakeCastService(),
+        UpnpService(),
+        MuslyAudioHandler(),
+        JukeboxService(),
+        TranscodingService());
+    addTearDown(again.dispose);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return again;
+  }
+
+  // RD: the refill mode is not saved with the queue, so after a restart Smart Shuffle is off, its queue plays
+  // out and stops, and the button shows plain shuffle or none; or the reasons are not saved, so "why" is gone.
+  test('a restart keeps Smart Shuffle and the reasons of its songs', () async {
+    await start(player.smartShuffle);
+    final reason = player.currentPickReason as ShufflePick;
+
+    final again = await restart();
+
+    expect(again.isSmartShuffle, isTrue);
+    expect(again.currentSong?.id, player.currentSong?.id);
+    final restored = again.currentPickReason as ShufflePick;
+    expect(
+        (restored.draw, restored.completes), (reason.draw, reason.completes));
+  });
+
+  // RD: stopping Smart Shuffle is not saved, so a restart turns it back on.
+  test('a restart keeps Smart Shuffle stopped', () async {
+    await start(player.smartShuffle);
+    // Smart Shuffle's own queue save lands first, so only the stop can save it as stopped.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    player.stopSmartShuffle();
+
+    final again = await restart();
+
+    expect(again.isSmartShuffle, isFalse);
+  });
 }
