@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:musly/models/models.dart';
 import 'package:musly/providers/library_provider.dart';
 import 'package:musly/providers/player_provider.dart';
@@ -136,5 +137,64 @@ void main() {
 
     expect(player.isSmartShuffle, isTrue);
     expect(player.currentSong?.id, before);
+  });
+
+  /// Plays songs[2] of the first six, with a gapless source standing in for the one audio would build.
+  Future<ConcatenatingAudioSource> playingThird() async {
+    await run(() => player.playSong(songs[2],
+        playlist: songs.take(6).toList(), startIndex: 2));
+    final source = ConcatenatingAudioSource(children: [
+      for (final s in player.queue)
+        AudioSource.uri(Uri.parse('http://test/${s.id}'), tag: s.id),
+    ]);
+    player.debugGaplessSource = source;
+    return source;
+  }
+
+  /// The queue edits behind the shuffle button finish in the background.
+  Future<void> settled() =>
+      Future<void>.delayed(const Duration(milliseconds: 200));
+
+  List<Object?> tags(ConcatenatingAudioSource s) =>
+      [for (final c in s.children) (c as UriAudioSource).tag];
+
+  // RD: turning shuffle on rebuilds the gapless source, which restarts the playing song from the start; or the
+  // source is edited out of step with the queue, so the next song played is not the one shown next.
+  test('turning shuffle on keeps the playing song and reorders the rest',
+      () async {
+    final source = await playingThird();
+
+    await player.cycleShuffle();
+    await settled();
+
+    expect(player.shuffleState, ShuffleState.shuffle);
+    expect((player.currentSong?.id, player.currentIndex), ('s2', 0));
+    expect(identical(player.debugGaplessSource, source), isTrue,
+        reason: 'a new source restarts the song');
+    expect(tags(source), [for (final s in player.queue) s.id]);
+    expect({for (final s in player.queue) s.id},
+        {for (final s in songs.take(6)) s.id});
+  });
+
+  // RD: Smart Shuffle starts its queue with a song of its own, so the song playing is cut off and counted as a
+  // skip; or it keeps the song but leaves the old queue after it.
+  test('starting Smart Shuffle keeps the playing song, with the picks after it',
+      () async {
+    final source = await playingThird();
+    final before = player.lastLeft;
+
+    // Clicked twice in quick succession: the second click's edit starts before the first one's is done.
+    await player.cycleShuffle();
+    await player.cycleShuffle();
+    await settled();
+
+    expect(player.shuffleState, ShuffleState.smart);
+    expect((player.currentSong?.id, player.currentIndex), ('s2', 0));
+    expect(player.lastLeft, before, reason: 'no song was left');
+    expect(identical(player.debugGaplessSource, source), isTrue);
+    expect(tags(source), [for (final s in player.queue) s.id]);
+    final picks = player.queue.skip(1).map((s) => s.id).toList();
+    expect(picks, isNotEmpty);
+    expect(picks, isNot(contains('s2')));
   });
 }

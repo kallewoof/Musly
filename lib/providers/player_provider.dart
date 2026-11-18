@@ -2391,16 +2391,56 @@ class PlayerProvider extends ChangeNotifier
   }
 
   /// Starts Smart Shuffle: a queue picked from the library by what the user finishes and skips, mixed with
-  /// songs not heard yet, and topped up as it runs low.
+  /// songs not heard yet, and topped up as it runs low. A song already playing goes on, with the picks after it.
   Future<void> smartShuffle() async {
+    final current = _isPlayingRadio ? null : _currentSong;
     final reasons = <String, PickReason>{};
     final picks = _smartShufflePicks(_smartShuffleBatch,
-        startingQueue: true, reasons: reasons);
+        startingQueue: true, reasons: reasons)
+      ..removeWhere((s) => s.id == current?.id);
+    reasons.remove(current?.id);
     if (picks.isEmpty) return;
     _refill = QueueRefill.smartShuffle;
     _pickReasons = reasons;
+    if (current != null) {
+      _shuffleHistory.clear();
+      await _replaceUpcoming(picks);
+      return;
+    }
     await playSong(picks.first,
         playlist: picks, startIndex: 0, keepRefill: true);
+  }
+
+  /// Makes [upcoming] the queue after the current song, which keeps playing where it is. The gapless source
+  /// is edited around the playing item rather than rebuilt: setting a new source restarts the song. Edits run
+  /// one at a time: two interleaved (a quick double click on shuffle) leave the source out of step with the queue.
+  Future<void> _replaceUpcoming(List<Song> upcoming) => _upcomingEdit =
+      _upcomingEdit.catchError((_) {}).then((_) => _replaceUpcomingNow(upcoming));
+  Future<void> _upcomingEdit = Future.value();
+
+  Future<void> _replaceUpcomingNow(List<Song> upcoming) async {
+    final current = _currentSong!;
+    final source = _isRenderingRemotely ? null : _concatenatingSource;
+    final built = source == null
+        ? const <AudioSource>[]
+        : await Future.wait(upcoming.map(_buildAudioSourceForSong));
+    if (_currentSong?.id != current.id) {
+      debugPrint('[Player] The song changed while the new queue was built; '
+          'the queue is left as it was');
+      return;
+    }
+    final at = _currentIndex;
+    _queue = [current, ...upcoming];
+    _currentIndex = 0;
+    notifyListeners();
+    _saveQueueState();
+    if (_upnpService.isConnected && upcoming.isNotEmpty) {
+      _queueNextSongForUpnp(upcoming.first).catchError((_) {});
+    }
+    if (source == null || !identical(source, _concatenatingSource)) return;
+    await source.removeRange(at + 1, source.length);
+    await source.removeRange(0, at);
+    await source.addAll(built);
   }
 
   /// Ends Smart Shuffle: the queue stays and plays out, without new picks added.
@@ -2520,17 +2560,12 @@ class PlayerProvider extends ChangeNotifier
         !_isRadioQueue &&
         _queue.length > 1 &&
         _currentSong != null) {
-      final currentSong = _currentSong!;
-      _queue.shuffle();
-      _queue.remove(currentSong);
-      _queue.insert(0, currentSong);
-      _currentIndex = 0;
-      if (_concatenatingSource != null) {
-        _buildAndSetConcatenatingSource(initialIndex: 0).catchError((e) {
-          debugPrint('Error rebuilding concatenating source after shuffle: $e');
-        });
-      }
-      _saveQueueState();
+      final upcoming = List.of(_queue)
+        ..shuffle()
+        ..remove(_currentSong);
+      _replaceUpcoming(upcoming).catchError((e) {
+        debugPrint('Error shuffling the queue: $e');
+      });
     }
     _storageService.saveShuffleMode(_shuffleEnabled);
     notifyListeners();
