@@ -40,8 +40,9 @@ class PlayQueueSync {
   /// Records this device's queue as changed. Nothing is sent until [flush]: the caller decides when a
   /// change is worth a request (pause, backgrounding, a periodic tick). A queue that cannot be pushed
   /// (empty, or playing a local file) discards the older pending change rather than leaving it to be sent.
-  void markChanged(List<Song> queue, int currentIndex, Duration position) {
-    _pending = _Snapshot.of(queue, currentIndex, position);
+  void markChanged(List<Song> queue, int currentIndex, Duration position,
+      {Map<String, Object?>? state}) {
+    _pending = _Snapshot.of(queue, currentIndex, position, state);
   }
 
   /// Pushes the unsent change, if any, now. A failed push stays pending for the next attempt.
@@ -55,8 +56,11 @@ class PlayQueueSync {
           debugPrint(
               '[PlayQueueSync] another device saved since; change dropped');
         } else {
+          final withState = (await _service.openSubsonicExtensions())
+              .contains('unimouseQueueState');
           await _service.savePlayQueue(
-              snapshot.songIds, snapshot.currentIndex, snapshot.position);
+              snapshot.songIds, snapshot.currentIndex, snapshot.position,
+              state: withState ? snapshot.state : null);
         }
         if (identical(_pending, snapshot)) _pending = null;
       } catch (e) {
@@ -105,18 +109,20 @@ class PlayQueueSync {
 }
 
 class _Snapshot {
-  _Snapshot(this.songIds, this.currentIndex, this.position)
+  _Snapshot(this.songIds, this.currentIndex, this.position, this.state)
       : madeAt = DateTime.now();
 
   final List<String> songIds;
   final int currentIndex;
   final Duration position;
+  final Map<String, Object?>? state;
   final DateTime madeAt;
   bool failed = false;
 
   /// Only server songs can be named to the server; local files are dropped and the index follows the
   /// current song. Null when nothing can be pushed: an empty queue, or a current song that is local.
-  static _Snapshot? of(List<Song> queue, int currentIndex, Duration position) {
+  static _Snapshot? of(List<Song> queue, int currentIndex, Duration position,
+      Map<String, Object?>? state) {
     if (currentIndex < 0 || currentIndex >= queue.length) return null;
     if (queue[currentIndex].isLocal) return null;
     final ids = <String>[];
@@ -126,6 +132,6 @@ class _Snapshot {
       if (i == currentIndex) index = ids.length;
       ids.add(queue[i].id);
     }
-    return _Snapshot(ids, index, position);
+    return _Snapshot(ids, index, position, state);
   }
 }

@@ -88,6 +88,90 @@ void main() {
     expect(player.isSmartShuffle, isFalse);
   });
 
+  /// Pushes this device's queue (a, b; on b) the way going to the background does, and returns the state
+  /// sent with it, or null when none was.
+  Future<Map<String, dynamic>?> pushedState() async {
+    player.didChangeAppLifecycleState(AppLifecycleState.paused);
+    await settle();
+    final state = server.saves.last['unimouseState']?.single;
+    return state == null ? null : jsonDecode(state) as Map<String, dynamic>;
+  }
+
+  // RD: the queue is pushed without how it is played, so a device that adopts it plays the songs in order and
+  // stops at the end, though this one was in Smart Shuffle.
+  test('pushes the shuffle setting, refill and reasons with the queue',
+      () async {
+    server.queueState = true;
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+    player.debugRefill = QueueRefill.smartShuffle;
+    player.toggleShuffle(forceValue: true);
+
+    final state = await pushedState();
+
+    expect((state?['refill'], state?['shuffle']), ('smartShuffle', true));
+    expect(state?['reasons'], isA<Map<String, dynamic>>());
+  });
+
+  // RD: turning shuffle off changes no song or position, so nothing marks the queue changed, and a device that
+  // adopts it shuffles a queue this device plays in order.
+  test('turning shuffle off is pushed', () async {
+    server.queueState = true;
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+    player.toggleShuffle(forceValue: true);
+    await pushedState();
+
+    player.toggleShuffle(forceValue: false);
+
+    expect((await pushedState())?['shuffle'], false);
+  });
+
+  // RD: the state is sent to every server, so a server that does not know it (upstream navidrome, gonic) is
+  // sent a parameter it may refuse, failing every queue save.
+  test('sends no state to a server without the extension', () async {
+    player = await playerWith({});
+    player.queue.addAll([song('a'), song('b')]);
+    await player.adoptTrackAt(1);
+
+    expect(await pushedState(), isNull);
+    expect(server.saves.last['id'], ['a', 'b']);
+  });
+
+  // RD: adoption drops the other device's state, so the queue taken over from the phone's Smart Shuffle plays out
+  // and stops here, without its "why", and with this device's shuffle setting.
+  test('adopting a queue plays it as the other device did', () async {
+    player = await playerWith({});
+    server.saveFromOtherDevice('Musly-ios-other', ['a', 'b', 'c'], 1, 0,
+        state: jsonEncode({
+          'shuffle': true,
+          'refill': 'smartShuffle',
+          'reasons': {'b': const TopHitPick(7).toJson()},
+        }));
+
+    expect(await player.adoptRemoteQueue(), isTrue);
+
+    expect(player.shuffleState, ShuffleState.smart);
+    expect(player.shuffleEnabled, isTrue);
+    expect((player.currentPickReason as TopHitPick).plays, 7);
+  });
+
+  // RD: a queue saved without state (the web UI, an older Musly) turns this device's shuffle off, a setting the
+  // user chose here.
+  test('a queue saved without state leaves the shuffle setting alone',
+      () async {
+    player = await playerWith({});
+    player.toggleShuffle(forceValue: true);
+    server.saveFromOtherDevice('Navidrome UI', ['a', 'b'], 0, 0);
+
+    expect(await player.adoptRemoteQueue(), isTrue);
+
+    expect(player.shuffleEnabled, isTrue);
+    expect(player.isSmartShuffle, isFalse);
+  });
+
   // RD: play() resumes the local queue without asking the server, so pressing play on the desktop ignores
   // where the phone stopped.
   test('play adopts the remote queue before resuming', () async {

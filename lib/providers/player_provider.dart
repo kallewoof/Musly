@@ -335,10 +335,7 @@ class PlayerProvider extends ChangeNotifier
       await _prefs!.setString(_keyQueueSongId, _currentSong?.id ?? '');
       await _prefs!.setInt(_keyQueuePosition, _position.inMilliseconds);
       await _prefs!.setString(_keyQueueRefill, _refill.name);
-      await _prefs!.setString(
-          _keyQueueReasons,
-          jsonEncode(
-              _pickReasons.map((id, reason) => MapEntry(id, reason.toJson()))));
+      await _prefs!.setString(_keyQueueReasons, jsonEncode(_reasonsJson()));
       debugPrint(
           'Queue state saved: index $_currentIndex, position $_position');
     } catch (e) {
@@ -382,8 +379,11 @@ class PlayerProvider extends ChangeNotifier
       _currentIndex = targetIndex;
       _currentSong = restoredSongs[targetIndex];
       _position = Duration(milliseconds: savedPositionMs);
-      _refill = _restoredRefill();
-      _pickReasons = _restoredReasons();
+      _refill = _refillNamed(_prefs!.getString(_keyQueueRefill));
+      final reasons = _prefs!.getString(_keyQueueReasons);
+      _pickReasons = reasons == null
+          ? {}
+          : _reasonsFrom(jsonDecode(reasons) as Map<String, dynamic>);
       final songDurationSecs = restoredSongs[targetIndex].duration;
       if (songDurationSecs != null && songDurationSecs > 0) {
         _duration = Duration(seconds: songDurationSecs);
@@ -394,31 +394,6 @@ class PlayerProvider extends ChangeNotifier
     } catch (e) {
       debugPrint('Error restoring queue state: $e');
     }
-  }
-
-  QueueRefill _restoredRefill() {
-    final name = _prefs!.getString(_keyQueueRefill);
-    if (name == null) return QueueRefill.none;
-    final refill = QueueRefill.values.asNameMap()[name];
-    if (refill == null) {
-      debugPrint('Saved queue refill "$name" is unknown; the queue will not refill');
-    }
-    return refill ?? QueueRefill.none;
-  }
-
-  /// A reason that cannot be read is left out, with its song shown without one.
-  Map<String, PickReason> _restoredReasons() {
-    final raw = _prefs!.getString(_keyQueueReasons);
-    if (raw == null) return {};
-    final reasons = <String, PickReason>{};
-    (jsonDecode(raw) as Map<String, dynamic>).forEach((id, json) {
-      try {
-        reasons[id] = PickReason.fromJson(json as Map<String, dynamic>);
-      } catch (e) {
-        debugPrint('Saved pick reason for $id unreadable: $e');
-      }
-    });
-    return reasons;
   }
 
   /// A loaded source has the previous server address baked into its URLs. While paused it is dropped, so
@@ -480,7 +455,37 @@ class PlayerProvider extends ChangeNotifier
 
   void _markQueueChanged() {
     if (_isPlayingRadio || _jukeboxService.enabled) return;
-    _queueSync.markChanged(_queue, _currentIndex, _position);
+    _queueSync.markChanged(_queue, _currentIndex, _position, state: {
+      'shuffle': _shuffleEnabled,
+      'refill': _refill.name,
+      'reasons': _reasonsJson(),
+    });
+  }
+
+  Map<String, Object?> _reasonsJson() =>
+      _pickReasons.map((id, reason) => MapEntry(id, reason.toJson()));
+
+  /// A saved refill mode; one this build does not know is reported, and the queue does not refill.
+  static QueueRefill _refillNamed(String? name) {
+    if (name == null) return QueueRefill.none;
+    final refill = QueueRefill.values.asNameMap()[name];
+    if (refill == null) {
+      debugPrint('Saved queue refill "$name" is unknown; the queue will not refill');
+    }
+    return refill ?? QueueRefill.none;
+  }
+
+  /// Saved pick reasons. One that cannot be read is left out, with its song shown without one.
+  static Map<String, PickReason> _reasonsFrom(Map<String, dynamic> json) {
+    final reasons = <String, PickReason>{};
+    json.forEach((id, reason) {
+      try {
+        reasons[id] = PickReason.fromJson(reason as Map<String, dynamic>);
+      } catch (e) {
+        debugPrint('Saved pick reason for $id unreadable: $e');
+      }
+    });
+    return reasons;
   }
 
   /// Adopts the play queue another device left on the server, so pressing play here continues where
@@ -510,8 +515,17 @@ class PlayerProvider extends ChangeNotifier
       await _audioPlayer.stop();
     } catch (_) {}
     _queue = remote.songs;
-    _refill = QueueRefill.none;
-    _pickReasons = {};
+    // Played as the saving device played it. A queue saved without state (the web UI, an older Musly) has no
+    // refill or reasons, and leaves this device's shuffle setting as it was.
+    final state = remote.state;
+    _refill = _refillNamed(state?['refill'] as String?);
+    _pickReasons = _reasonsFrom(
+        state?['reasons'] as Map<String, dynamic>? ?? const {});
+    if (state?['shuffle'] case final bool shuffle) {
+      _shuffleEnabled = shuffle;
+      _shuffleHistory.clear();
+      _storageService.saveShuffleMode(shuffle);
+    }
     _currentIndex = remote.currentIndex;
     _currentSong = remote.songs[remote.currentIndex];
     _position = remote.position;
@@ -2568,6 +2582,7 @@ class PlayerProvider extends ChangeNotifier
       });
     }
     _storageService.saveShuffleMode(_shuffleEnabled);
+    _markQueueChanged();
     notifyListeners();
     _updateAllServices();
   }

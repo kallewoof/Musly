@@ -520,9 +520,11 @@ class SubsonicService {
   }
 
   /// Saves the queue as the user's server-side play queue, by index so a song queued twice stays twice.
-  /// Sent as a form POST: a long queue's ids would overflow a GET URL.
+  /// Sent as a form POST: a long queue's ids would overflow a GET URL. [state] is how this device plays the
+  /// queue, for a server with the `unimouseQueueState` extension.
   Future<void> savePlayQueue(
-      List<String> songIds, int currentIndex, Duration position) async {
+      List<String> songIds, int currentIndex, Duration position,
+      {Map<String, Object?>? state}) async {
     if (_config == null) throw Exception('Server not configured');
     final response = await _dio.post(
       '$activeBaseUrl/rest/savePlayQueueByIndex',
@@ -531,6 +533,7 @@ class SubsonicService {
         'id': songIds,
         'currentIndex': '$currentIndex',
         'position': '${position.inMilliseconds}',
+        if (state != null) 'unimouseState': jsonEncode(state),
       },
       options: Options(
         contentType: Headers.formUrlEncodedContentType,

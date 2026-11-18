@@ -13,6 +13,9 @@ class FakeQueueServer {
   /// On for our navidrome build, which keeps users' tag edits.
   bool tagOverlay = false;
 
+  /// On for our navidrome build, which keeps the saving client's state with the queue.
+  bool queueState = false;
+
   /// Delays the queue lookup, to let a test act while a device waits for the server.
   Duration getDelay = Duration.zero;
   int gets = 0;
@@ -40,8 +43,10 @@ class FakeQueueServer {
 
   /// What another device's save leaves on the server.
   void saveFromOtherDevice(
-      String client, List<String> ids, int index, int positionMs) {
+      String client, List<String> ids, int index, int positionMs,
+      {String? state}) {
     queue = {
+      if (state != null) 'unimouseState': state,
       'entry': [
         for (final id in ids) {'id': id, 'title': 'T-$id'}
       ],
@@ -85,7 +90,8 @@ class FakeQueueServer {
             params['c']!.single,
             ids,
             int.parse(params['currentIndex']!.single),
-            int.parse(params['position']!.single));
+            int.parse(params['position']!.single),
+            state: params['unimouseState']?.single);
       }
     } else if (req.uri.path.endsWith('/getOpenSubsonicExtensions')) {
       response['openSubsonicExtensions'] = [
@@ -97,6 +103,11 @@ class FakeQueueServer {
         if (tagOverlay)
           {
             'name': 'unimouseTagOverlay',
+            'versions': [1]
+          },
+        if (queueState)
+          {
+            'name': 'unimouseQueueState',
             'versions': [1]
           },
       ];
