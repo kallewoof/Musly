@@ -272,4 +272,37 @@ void main() {
 
     expect(restarted.recentlyHeard(), contains('k1'));
   });
+
+  // RD: the finished counts inflated by older builds (every song change recorded as a finished listen) survive,
+  // so skipped songs keep looking liked; or the reset runs on every start and throws away the new, true counts.
+  test(
+      'drops counts saved without the mark once, and keeps those counted after',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'rec_decay_ts': DateTime.now().millisecondsSinceEpoch,
+      'rec_data_v3': jsonEncode({
+        'profiles': {
+          'c1': {
+            'songId': 'c1',
+            'title': 'T',
+            'playCount': 7,
+            'completedPlays': 5
+          }
+        },
+      }),
+    });
+    final s = Song(id: 'c1', title: 'T');
+    final first = RecommendationService();
+    await first.initialize();
+    expect(first.listenOutcomes(s).completes, 0);
+
+    await first.trackSongPlay(s, durationPlayed: 200, completed: true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    first.dispose();
+    final second = RecommendationService();
+    await second.initialize();
+    addTearDown(second.dispose);
+
+    expect(second.listenOutcomes(s).completes, 1);
+  });
 }

@@ -1,19 +1,24 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
 import '../models/song.dart';
 import '../providers/player_provider.dart';
+import 'recommendation_service.dart';
 import 'subsonic_service.dart';
 
-/// Tells an OpenSubsonic server how listens go (`reportPlayback`), so it can count each song's skips and
-/// completions per user. The reports are derived from the player's state (current song, playing, position)
-/// rather than from its many track-change paths.
+/// Judges how each listen ended and passes the verdict on: to an OpenSubsonic server (`reportPlayback`), which
+/// counts each song's skips and completions per user, and to this device's taste model. The reports are derived
+/// from the player's state (current song, playing, position) rather than from its many track-change paths.
 class PlaybackReporter {
-  PlaybackReporter(this._player, this._service);
+  PlaybackReporter(this._player, this._service,
+      {RecommendationService? recommendations})
+      : _recommendations = recommendations;
 
   final PlayerProvider _player;
   final SubsonicService _service;
+  final RecommendationService? _recommendations;
 
   Song? _song;
   bool _started = false;
@@ -47,14 +52,39 @@ class PlaybackReporter {
     _position = position;
   }
 
-  /// The song is being replaced. Left while paused it gets no verdict: the queue was adopted from another
-  /// device or restored, or the listen was already abandoned. Past 90% it was heard, however it ended.
+  /// The song is being replaced. Left with Back, or while paused, it gets no verdict: going back is to hear an
+  /// earlier song again, and a paused song was replaced by an adopted or restored queue, or already abandoned.
+  /// Past 90% it was heard, however it ended. How long it was heard comes from the player, which counts it by
+  /// the clock; the position seen here can be stale, as position changes do not notify listeners.
   void _leave() {
     final left = _song;
     if (left == null || !_started) return;
+    final handed = _player.lastLeft;
+    final fromPlayer = handed != null && handed.id == left.id;
+    if (fromPlayer && handed.wentBack) return;
+    final heard = fromPlayer ? handed.heard : _position;
     final seconds = left.duration ?? 0;
-    final heard = seconds > 0 && _position.inMilliseconds >= seconds * 900;
-    if (_playing || heard) _send(left, 'stopped', _position);
+    final finished = seconds > 0 && heard.inMilliseconds >= seconds * 900;
+    if (!_playing && !finished) return;
+    _judge(left, heard, finished);
+    _send(left, 'stopped', heard);
+  }
+
+  /// The taste model takes the verdict the server draws from the stop: a skip before the scrobble point (half
+  /// the song, at most four minutes), a completion from 90%, and between them a listen that counts as neither.
+  void _judge(Song song, Duration heard, bool finished) {
+    final rec = _recommendations;
+    if (rec == null) return;
+    final seconds = song.duration ?? 0;
+    final scrobblePointMs = min(seconds * 500, 240000);
+    if (finished) {
+      rec.trackSongPlay(song,
+          durationPlayed: heard.inSeconds, completed: true);
+    } else if (seconds > 0 && heard.inMilliseconds < scrobblePointMs) {
+      rec.trackSkip(song, secondsPlayed: heard.inSeconds);
+    } else {
+      rec.trackSongPlay(song, durationPlayed: heard.inSeconds);
+    }
   }
 
   void _send(Song song, String state, Duration position) {

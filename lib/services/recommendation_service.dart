@@ -53,6 +53,7 @@ class RecommendationService extends ChangeNotifier {
   /// [_recentlyPlayed], which feeds "Listen Again" and must not list skipped songs.
   List<({String id, DateTime at})> _heard = [];
   static const _heardKept = 1000;
+  static const _countsVersion = 2;
 
   @visibleForTesting
   DateTime Function() clock = DateTime.now;
@@ -790,6 +791,17 @@ class RecommendationService extends ChangeNotifier {
         _artistRatingAffinity = _parseDoubleMap(d['artistRatings']);
         _genreRatingAffinity = _parseDoubleMap(d['genreRatings']);
         _recentlyPlayed = List<String>.from(d['recent'] ?? []);
+        // Counts saved without this mark came from builds that recorded every song change as a finished
+        // listen, skips included, so they made skipped songs look liked. They restart from the playback
+        // reporter's verdicts; the server's counts stand in meanwhile.
+        if (d['countsVersion'] != _countsVersion) {
+          for (final p in _profiles.values) {
+            p.playCount = 0;
+            p.completedPlays = 0;
+            p.totalListenTime = 0;
+          }
+          _scheduleSave();
+        }
         _heard = [
           for (final h in (d['heard'] as List<dynamic>? ?? const []))
             (
@@ -849,6 +861,7 @@ class RecommendationService extends ChangeNotifier {
         'genres': _genreAffinity,
         'albums': _albumAffinity,
         'recent': _recentlyPlayed,
+        'countsVersion': _countsVersion,
         'heard': [
           for (final h in _heard) [h.id, h.at.millisecondsSinceEpoch]
         ],

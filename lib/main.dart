@@ -207,7 +207,9 @@ void main() async {
   if (!kIsWeb && Platform.isIOS) {
     FavoriteControlService(playerProvider).start();
   }
-  PlaybackReporter(playerProvider, subsonicService).start();
+  PlaybackReporter(playerProvider, subsonicService,
+          recommendations: recommendationService)
+      .start();
   StarRefresher(playerProvider).start();
 
   final offlineServiceForAuto = OfflineService();

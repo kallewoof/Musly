@@ -143,7 +143,28 @@ class PlayerProvider extends ChangeNotifier
         played.inMilliseconds >= duration.inMilliseconds ~/ 2;
   }
 
+  /// The song tracking last moved away from: how long it was heard, and whether Back left it. The playback
+  /// reporter reads this to judge the listen, since by the time it hears of the change the player tracks the
+  /// next song, and the position stream does not notify listeners.
+  ({String id, Duration heard, bool wentBack})? _lastLeft;
+  ({String id, Duration heard, bool wentBack})? get lastLeft => _lastLeft;
+
+  /// Set by Back as it moves to the previous song, for [_lastLeft]: going back is no verdict on the song left.
+  bool _goingBack = false;
+
   void _resetScrobbleTracking(Song song) {
+    final left = _scrobbleTrackedSongId;
+    if (left != null && left != song.id) {
+      _lastLeft = (
+        id: left,
+        heard: _songAccumulatedPlayTime +
+            ((_songPlaybackStartTime != null && _isPlaying)
+                ? DateTime.now().difference(_songPlaybackStartTime!)
+                : Duration.zero),
+        wentBack: _goingBack,
+      );
+    }
+    _goingBack = false;
     _songPlaybackStartTime = DateTime.now();
     _songAccumulatedPlayTime = Duration.zero;
     _scrobbleTrackedSongId = song.id;
@@ -1890,13 +1911,6 @@ class PlayerProvider extends ChangeNotifier
         }
       }
 
-      if (_recommendationService != null) {
-        _recommendationService!.trackSongPlay(
-          song,
-          durationPlayed: 0,
-          completed: false,
-        );
-      }
 
       _updateAndroidAuto();
     } catch (e) {
@@ -2229,20 +2243,6 @@ class PlayerProvider extends ChangeNotifier
   }
 
   Future<void> skipNext() async {
-    if (_currentSong != null && _recommendationService != null) {
-      final played = _position.inSeconds;
-      final total = _duration.inSeconds;
-      if (total > 0 && played < total * 0.8) {
-        _recommendationService!.trackSkip(_currentSong!);
-      } else if (played > 0) {
-        _recommendationService!.trackSongPlay(
-          _currentSong!,
-          durationPlayed: played,
-          completed: played >= total * 0.8,
-        );
-      }
-    }
-
     if (_jukeboxService.enabled) {
       await _jukeboxService.skipNext(_subsonicService);
       return;
@@ -2422,6 +2422,8 @@ class PlayerProvider extends ChangeNotifier
       return;
     }
 
+    _goingBack = true;
+
     if (_concatenatingSource != null && !_isRenderingRemotely) {
       if (_shuffleEnabled && _shuffleHistory.isNotEmpty) {
         final prevId = _shuffleHistory.removeLast();
@@ -2436,6 +2438,7 @@ class PlayerProvider extends ChangeNotifier
       } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
         await _audioPlayer.seek(Duration.zero, index: _queue.length - 1);
       } else {
+        _goingBack = false;
         await seek(Duration.zero);
       }
       return;
@@ -2449,12 +2452,14 @@ class PlayerProvider extends ChangeNotifier
       await skipToIndex(_currentIndex - 1);
     } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
       if (_queue.length == 1) {
+        _goingBack = false;
         await seek(Duration.zero);
         await play();
       } else {
         await skipToIndex(_queue.length - 1);
       }
     } else {
+      _goingBack = false;
       await seek(Duration.zero);
     }
   }
@@ -2979,13 +2984,6 @@ class PlayerProvider extends ChangeNotifier
         debugPrint('[Player] Skipped scrobble for "${outgoing.title}" '
             '(not played long enough)');
       }
-    }
-    if (_recommendationService != null) {
-      _recommendationService!.trackSongPlay(
-        outgoing,
-        durationPlayed: _duration.inSeconds,
-        completed: true,
-      );
     }
   }
 
