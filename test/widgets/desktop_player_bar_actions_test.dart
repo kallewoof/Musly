@@ -33,9 +33,16 @@ class _ShufflePlayer extends PlayerProvider {
 
   ShuffleState state = ShuffleState.off;
   int cycles = 0;
+  double? tasteSet;
 
   @override
   ShuffleState get shuffleState => state;
+
+  @override
+  bool get isSmartShuffle => state == ShuffleState.smart;
+
+  @override
+  Future<void> setSmartShuffleTaste(double taste) async => tasteSet = taste;
 
   @override
   Future<void> cycleShuffle() async {
@@ -146,7 +153,8 @@ void main() {
 
     // RD: the desktop bar keeps the two-state shuffle button: it shows Smart Shuffle as plain shuffle, and a tap
     // toggles plain shuffle instead of stepping to the next state.
-    testWidgets('steps the shuffle button through its states, showing Smart Shuffle',
+    testWidgets(
+        'steps the shuffle button through its states, showing Smart Shuffle',
         (tester) async {
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -181,5 +189,48 @@ void main() {
       // playSong leaves a 1.2 s timer of its own.
       await tester.pump(const Duration(seconds: 2));
     });
+
+    // RD: on the desktop the slider is only in the queue panel, closed by default, so it cannot be found; or the
+    // bar shows it with Smart Shuffle off; or its extra row overflows the 90-pixel bar in a narrow window.
+    for (final width in [1280.0, 900.0]) {
+      testWidgets(
+          'the player bar has the Smart Shuffle slider while it runs, at width $width',
+          (tester) async {
+        tester.view.physicalSize = Size(width, 800);
+        tester.view.devicePixelRatio = 1.0;
+        final player = shufflePlayer;
+        libraryProvider.setServerOfflineMode(true);
+        player.playSong(
+            Song(id: 's1', title: 'Song 1', artist: 'Artist A', duration: 210));
+
+        await tester.pumpWidget(createTestApp(
+          playerProvider: player,
+          libraryProvider: libraryProvider,
+          subsonicService: subsonicService,
+          child: ChangeNotifierProvider<TvDetectionService>.value(
+            value: TvDetectionService(),
+            child: const SizedBox(height: 90, child: DesktopPlayerBar()),
+          ),
+        ));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byKey(const ValueKey('smart-shuffle-taste')), findsNothing);
+
+        player.state = ShuffleState.smart;
+        player.notifyListeners();
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        await tester.drag(
+            find.descendant(
+                of: find.byKey(const ValueKey('smart-shuffle-taste')),
+                matching: find.byType(Slider)),
+            Offset(-width, 0));
+        await tester.pump();
+
+        expect(player.tasteSet, 0.0);
+
+        // playSong leaves a 1.2 s timer of its own.
+        await tester.pump(const Duration(seconds: 2));
+      });
+    }
   });
 }

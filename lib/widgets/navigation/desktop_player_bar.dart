@@ -6,6 +6,7 @@ import 'package:musly/models/radio_station.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/widgets/common/album_artwork.dart';
 import 'package:musly/widgets/common/multi_artist_widget.dart';
+import 'package:musly/widgets/now_playing/smart_shuffle_taste_slider.dart';
 import 'package:musly/utils/navigation_helper.dart';
 import 'package:musly/screens/connect/connect_devices_modal.dart';
 import 'package:musly/services/subsonic_service.dart';
@@ -270,6 +271,14 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
                                     color: Color(0xFFB3B3B3),
                                   ),
                                 ),
+                              Selector<PlayerProvider, bool>(
+                                selector: (_, p) => p.isSmartShuffle,
+                                builder: (context, smart, _) => smart
+                                    ? const SmartShuffleTasteSlider(
+                                        color: Color(0xFFB3B3B3),
+                                        compact: true)
+                                    : const SizedBox.shrink(),
+                              ),
                             ],
                           ),
                         ),
