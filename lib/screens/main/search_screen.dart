@@ -97,10 +97,6 @@ class _SearchScreenState extends State<SearchScreen> {
         setState(() {
           _searchResult = result;
           _isSearching = false;
-          if (!_recentQueries.contains(query)) {
-            _recentQueries.insert(0, query);
-            if (_recentQueries.length > 8) _recentQueries.removeLast();
-          }
         });
       }
     } catch (e) {
@@ -108,6 +104,26 @@ class _SearchScreenState extends State<SearchScreen> {
         setState(() => _isSearching = false);
       }
     }
+  }
+
+  /// Keeps the query in the field as a recent search. Only a query that was used counts (submitted, or a
+  /// result played or opened): results show as the user types, and each pause would otherwise leave a
+  /// prefix of the word behind.
+  void _rememberQuery() {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+    setState(() {
+      _recentQueries
+        ..remove(query)
+        ..insert(0, query);
+      if (_recentQueries.length > 8) _recentQueries.removeLast();
+    });
+  }
+
+  /// Opens a search result, keeping its query as a recent search.
+  void _openResult(Widget screen) {
+    _rememberQuery();
+    NavigationHelper.push(context, screen);
   }
 
   void _clearSearch() {
@@ -119,6 +135,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _playSong(Song song) {
+    _rememberQuery();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     playerProvider.playSongWithRadio(song);
   }
@@ -186,6 +203,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     onChanged: _onSearchChanged,
                     onSubmitted: (v) {
                       _performSearch(v.trim());
+                      _rememberQuery();
                       _focusNode.unfocus();
                     },
                     style: const TextStyle(
@@ -341,6 +359,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   onPressed: () {
                     _searchController.text = q;
                     _performSearch(q);
+                    _rememberQuery();
                   },
                   onDeleted: () => setState(() => _recentQueries.remove(q)),
                   backgroundColor:
@@ -615,8 +634,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   coverArt: coverArt,
                   isRound: true,
                   size: _isDesktop ? 160 : 140,
-                  onTap: () => NavigationHelper.push(
-                    context,
+                  onTap: () => _openResult(
                     ArtistScreen(artistId: artist.id),
                   ),
                 );
@@ -636,8 +654,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   subtitle: album.artist,
                   coverArt: album.coverArt,
                   size: _isDesktop ? 175 : 150,
-                  onTap: () => NavigationHelper.push(
-                    context,
+                  onTap: () => _openResult(
                     AlbumScreen(albumId: album.id),
                   ),
                 );
@@ -663,8 +680,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     borderRadius: 4,
                   ),
                   size: cardSize,
-                  onTap: () => NavigationHelper.push(
-                    context,
+                  onTap: () => _openResult(
                     PlaylistScreen(
                         playlistId: playlist.id, playlistName: playlist.name),
                   ),
@@ -699,12 +715,10 @@ class _SearchScreenState extends State<SearchScreen> {
       typeLabel: 'Artist',
       isArtist: true,
       imageUrl: coverArt,
-      onTap: () => NavigationHelper.push(
-        context,
+      onTap: () => _openResult(
         ArtistScreen(artistId: artist.id),
       ),
-      onPlayPressed: () => NavigationHelper.push(
-        context,
+      onPlayPressed: () => _openResult(
         ArtistScreen(artistId: artist.id),
       ),
     );
@@ -716,12 +730,10 @@ class _SearchScreenState extends State<SearchScreen> {
       subtitle: 'Album • ${album.artist}',
       typeLabel: 'Album',
       imageUrl: album.coverArt,
-      onTap: () => NavigationHelper.push(
-        context,
+      onTap: () => _openResult(
         AlbumScreen(albumId: album.id),
       ),
-      onPlayPressed: () => NavigationHelper.push(
-        context,
+      onPlayPressed: () => _openResult(
         AlbumScreen(albumId: album.id),
       ),
     );
