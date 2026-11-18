@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/models.dart';
@@ -431,6 +432,32 @@ class LibraryDatabaseService {
       await txn.delete('artists');
       await txn.delete('playlists');
     });
+  }
+
+  /// Removes the server's songs (or albums) not in [keep]: what a complete fetch of the library no longer
+  /// lists has gone from the server. Local files are kept.
+  Future<void> deleteServerSongsExcept(Set<String> keep) =>
+      _deleteServerRowsExcept('songs', keep);
+  Future<void> deleteServerAlbumsExcept(Set<String> keep) =>
+      _deleteServerRowsExcept('albums', keep);
+
+  Future<void> _deleteServerRowsExcept(String table, Set<String> keep) async {
+    final db = await database;
+    final rows = await db.query(table, columns: ['id'], where: 'isLocal = 0');
+    final stale = [
+      for (final row in rows)
+        if (!keep.contains(row['id'])) row['id'] as String,
+    ];
+    if (stale.isEmpty) return;
+    await db.transaction((txn) async {
+      for (var i = 0; i < stale.length; i += _batchSize) {
+        final chunk = stale.sublist(i, (i + _batchSize).clamp(0, stale.length));
+        await txn.delete(table,
+            where: 'id IN (${List.filled(chunk.length, '?').join(',')})',
+            whereArgs: chunk);
+      }
+    });
+    debugPrint('[LibraryDB] removed ${stale.length} $table gone from the server');
   }
 
   Future<void> clearServerData() async {

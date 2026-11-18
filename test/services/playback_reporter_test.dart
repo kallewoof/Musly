@@ -27,7 +27,7 @@ class _Player extends PlayerProvider {
   Song? song;
   bool playing = false;
   Duration pos = Duration.zero;
-  ({String id, Duration heard, bool wentBack})? left;
+  ({String id, Duration heard, bool unjudged})? left;
 
   @override
   Song? get currentSong => song;
@@ -36,7 +36,7 @@ class _Player extends PlayerProvider {
   @override
   Duration get position => pos;
   @override
-  ({String id, Duration heard, bool wentBack})? get lastLeft => left;
+  ({String id, Duration heard, bool unjudged})? get lastLeft => left;
 
   void show({Song? song, bool? playing, int? seconds, bool clearSong = false}) {
     if (song != null || clearSong) this.song = song;
@@ -177,7 +177,7 @@ void main() {
   /// Leaves [from] for [to] the way the player does: its record of the song left, then the change.
   void leave(Song from, Song to, {required int heard, bool back = false}) {
     player.left =
-        (id: from.id, heard: Duration(seconds: heard), wentBack: back);
+        (id: from.id, heard: Duration(seconds: heard), unjudged: back);
     player.show(song: to, seconds: 0);
   }
 

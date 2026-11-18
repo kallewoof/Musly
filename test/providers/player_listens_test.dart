@@ -81,16 +81,16 @@ void main() {
 
     await run(player.skipNext);
     expect(player.lastLeft?.id, 's2');
-    expect(player.lastLeft?.wentBack, isFalse);
+    expect(player.lastLeft?.unjudged, isFalse);
 
     await run(player.skipPrevious);
     expect(player.currentSong?.id, 's2');
     expect(player.lastLeft?.id, 's3');
-    expect(player.lastLeft?.wentBack, isTrue);
+    expect(player.lastLeft?.unjudged, isTrue);
 
     await run(player.skipNext);
     expect(player.lastLeft?.id, 's2');
-    expect(player.lastLeft?.wentBack, isFalse);
+    expect(player.lastLeft?.unjudged, isFalse);
   });
 
   // RD: Back on the first song (which only restarts it) leaves the mark set, so the song after it, left with
@@ -103,7 +103,7 @@ void main() {
     await run(player.skipNext);
 
     expect(player.lastLeft?.id, 's0');
-    expect(player.lastLeft?.wentBack, isFalse);
+    expect(player.lastLeft?.unjudged, isFalse);
   });
 
   // RD: the player records each song it leaves as a finished listen (or each start as a listen), so skipped

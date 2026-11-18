@@ -398,6 +398,9 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
     }
   }
 
+  @visibleForTesting
+  Future<void> debugRefreshInBackground() => _refreshAllDataInBackground();
+
   Future<void> _refreshAllDataInBackground() async {
     if (_subsonicService.isYoutube || _serverOfflineMode || _localOnlyMode) return;
     if (_isBackgroundSyncing) {
@@ -411,6 +414,9 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
       int offset = 0;
       final List<Album> allAlbums = [];
       final seenSongIds = <String>{};
+      // Songs the server no longer lists are pruned from the cache only after a fetch that missed nothing: an
+      // album whose songs failed to load would otherwise lose them.
+      var complete = true;
 
       while (true) {
         final page = await _subsonicService.getAlbumList(
@@ -427,6 +433,9 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
 
       // Immediately publish albums so Albums view is instantly populated
       if (allAlbums.isNotEmpty) {
+        // The list is complete (a failed page ends the refresh), so an album missing from it is gone, and its
+        // songs are not fetched below, where they would fail and leave the refresh incomplete.
+        await _db.deleteServerAlbumsExcept({for (final a in allAlbums) a.id});
         _cachedAllAlbums = List.from(allAlbums);
         notifyListeners();
       }
@@ -464,6 +473,7 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
                 try {
                   return await _subsonicService.getAlbumSongs(album.id);
                 } catch (_) {
+                  complete = false;
                   return <Song>[];
                 }
               }),
@@ -488,6 +498,9 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
         }
       }
 
+      if (complete && seenSongIds.isNotEmpty) {
+        await _db.deleteServerSongsExcept(seenSongIds);
+      }
       _cachedAllAlbums = allAlbums.isNotEmpty
           ? allAlbums
           : await _db.getAllAlbums();

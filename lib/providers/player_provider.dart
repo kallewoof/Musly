@@ -143,14 +143,15 @@ class PlayerProvider extends ChangeNotifier
         played.inMilliseconds >= duration.inMilliseconds ~/ 2;
   }
 
-  /// The song tracking last moved away from: how long it was heard, and whether Back left it. The playback
-  /// reporter reads this to judge the listen, since by the time it hears of the change the player tracks the
-  /// next song, and the position stream does not notify listeners.
-  ({String id, Duration heard, bool wentBack})? _lastLeft;
-  ({String id, Duration heard, bool wentBack})? get lastLeft => _lastLeft;
+  /// The song tracking last moved away from: how long it was heard, and whether leaving it says nothing about
+  /// the song ([unjudged]). The playback reporter reads this to judge the listen, since by the time it hears of
+  /// the change the player tracks the next song, and the position stream does not notify listeners.
+  ({String id, Duration heard, bool unjudged})? _lastLeft;
+  ({String id, Duration heard, bool unjudged})? get lastLeft => _lastLeft;
 
-  /// Set by Back as it moves to the previous song, for [_lastLeft]: going back is no verdict on the song left.
-  bool _goingBack = false;
+  /// Set for [_lastLeft] by a move away that is no verdict on the song left: Back (to hear an earlier song
+  /// again), and moving past a song that never started playing.
+  bool _leavingUnjudged = false;
 
   void _resetScrobbleTracking(Song song) {
     final left = _scrobbleTrackedSongId;
@@ -161,10 +162,10 @@ class PlayerProvider extends ChangeNotifier
             ((_songPlaybackStartTime != null && _isPlaying)
                 ? DateTime.now().difference(_songPlaybackStartTime!)
                 : Duration.zero),
-        wentBack: _goingBack,
+        unjudged: _leavingUnjudged,
       );
     }
-    _goingBack = false;
+    _leavingUnjudged = false;
     _songPlaybackStartTime = DateTime.now();
     _songAccumulatedPlayTime = Duration.zero;
     _scrobbleTrackedSongId = song.id;
@@ -185,6 +186,9 @@ class PlayerProvider extends ChangeNotifier
   Timer? _stallTimer;
   Duration? _stallPosition;
   int _stallTicks = 0;
+  String? _startStallSongId;
+  int _startStallTicks = 0;
+  int _startStallReloads = 0;
 
   final bool _reactivatingSession = false;
 
@@ -256,8 +260,10 @@ class PlayerProvider extends ChangeNotifier
       unawaited(_queueSync.flush());
     });
 
-    _stallTimer =
-        Timer.periodic(const Duration(seconds: 1), (_) => checkForStallAtEnd());
+    _stallTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      checkForStallAtEnd();
+      checkForStallAtStart();
+    });
 
     WidgetsBinding.instance.addObserver(this);
   }
@@ -438,6 +444,50 @@ class PlayerProvider extends ChangeNotifier
     } else {
       unawaited(skipNext());
     }
+  }
+
+  /// Checks without progress before a song that has not started is loaded again, and loads before it is
+  /// given up: about 40 s, longer than the server takes to restart.
+  static const _startStallChecks = 8;
+  static const _maxStartReloads = 4;
+
+  /// A song whose stream fails to open (the server restarting, a file gone from the library) leaves the
+  /// decoder waiting at the start for good, the player showing it playing at 0:00. After [_startStallChecks]
+  /// checks (a second apart) in its first second without progress it is loaded again; after
+  /// [_maxStartReloads] loads it is taken as unplayable and the queue moves on. Moving past it is no verdict
+  /// on the song, which was never heard.
+  @visibleForTesting
+  void checkForStallAtStart() {
+    final song = _currentSong;
+    if (song?.id != _startStallSongId) {
+      _startStallSongId = song?.id;
+      _startStallTicks = 0;
+      _startStallReloads = 0;
+    }
+    if (song == null ||
+        !_isPlaying ||
+        _isRenderingRemotely ||
+        _isPlayingRadio ||
+        _jukeboxService.enabled ||
+        _position >= const Duration(seconds: 1)) {
+      _startStallTicks = 0;
+      if (_position >= const Duration(seconds: 1)) _startStallReloads = 0;
+      return;
+    }
+    if (++_startStallTicks < _startStallChecks) return;
+    _startStallTicks = 0;
+    // The stuck decoder may hold the loaded playlist too, so the song is loaded afresh rather than by index.
+    _concatenatingSource = null;
+    if (_startStallReloads++ < _maxStartReloads) {
+      debugPrint('[Player] "${song.title}" has not started; loading it again');
+      unawaited(stop().then((_) => play(adoptRemote: false)));
+      return;
+    }
+    debugPrint('[Player] "${song.title}" will not play; moving on');
+    _leavingUnjudged = true;
+    unawaited(skipNext().whenComplete(() {
+      if (_currentSong?.id == song.id) _leavingUnjudged = false;
+    }));
   }
 
   /// Tests have no audio backend, so a gapless queue's source can only be put in place, and a replacement
@@ -2511,7 +2561,7 @@ class PlayerProvider extends ChangeNotifier
       return;
     }
 
-    _goingBack = true;
+    _leavingUnjudged = true;
 
     if (_concatenatingSource != null && !_isRenderingRemotely) {
       if (_shuffleEnabled && _shuffleHistory.isNotEmpty) {
@@ -2527,7 +2577,7 @@ class PlayerProvider extends ChangeNotifier
       } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
         await _audioPlayer.seek(Duration.zero, index: _queue.length - 1);
       } else {
-        _goingBack = false;
+        _leavingUnjudged = false;
         await seek(Duration.zero);
       }
       return;
@@ -2541,14 +2591,14 @@ class PlayerProvider extends ChangeNotifier
       await skipToIndex(_currentIndex - 1);
     } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
       if (_queue.length == 1) {
-        _goingBack = false;
+        _leavingUnjudged = false;
         await seek(Duration.zero);
         await play();
       } else {
         await skipToIndex(_queue.length - 1);
       }
     } else {
-      _goingBack = false;
+      _leavingUnjudged = false;
       await seek(Duration.zero);
     }
   }

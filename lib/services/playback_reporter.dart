@@ -52,8 +52,9 @@ class PlaybackReporter {
     _position = position;
   }
 
-  /// The song is being replaced. Left with Back, or while paused, it gets no verdict: going back is to hear an
-  /// earlier song again, and a paused song was replaced by an adopted or restored queue, or already abandoned.
+  /// The song is being replaced. Left with Back, past a song that never started, or while paused, it gets no
+  /// verdict: going back is to hear an earlier song again, a song that never played was not heard, and a paused
+  /// song was replaced by an adopted or restored queue, or already abandoned.
   /// Past 90% it was heard, however it ended. How long it was heard comes from the player, which counts it by
   /// the clock; the position seen here can be stale, as position changes do not notify listeners.
   void _leave() {
@@ -61,7 +62,7 @@ class PlaybackReporter {
     if (left == null || !_started) return;
     final handed = _player.lastLeft;
     final fromPlayer = handed != null && handed.id == left.id;
-    if (fromPlayer && handed.wentBack) return;
+    if (fromPlayer && handed.unjudged) return;
     final heard = fromPlayer ? handed.heard : _position;
     final seconds = left.duration ?? 0;
     final finished = seconds > 0 && heard.inMilliseconds >= seconds * 900;

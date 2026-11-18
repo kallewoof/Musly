@@ -151,4 +151,91 @@ void main() {
     expect(timed.currentSong?.id, 'b');
     timed.dispose();
   });
+
+  /// Runs [ticks] start checks with the song playing, the way the one-second timer would. A reload stops and
+  /// starts the player, which has no audio backend in tests: playing is set again before each check.
+  Future<void> checkStart(int ticks) async {
+    runZonedGuarded(() {
+      for (var i = 0; i < ticks; i++) {
+        player.debugSetPlaying(true);
+        player.checkForStallAtStart();
+      }
+    }, (_, __) {});
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+
+  // RD: a song whose stream failed to open (the server restarting while the next song loads) waits at 0:00
+  // for good, the player showing it playing; or it is reloaded at once, before a slow stream had time.
+  test('a song that does not start within 8 s is loaded again', () async {
+    final stuck = ConcatenatingAudioSource(children: []);
+    player.debugGaplessSource = stuck;
+
+    await checkStart(7);
+    expect(player.debugGaplessSource, same(stuck));
+
+    await checkStart(1);
+    expect(player.currentSong?.id, 'a');
+    expect(player.debugGaplessSource, isNot(same(stuck)),
+        reason: 'the stuck source is dropped and the song loaded afresh');
+  });
+
+  // RD: an unplayable song (its file gone from the library) is reloaded forever and the queue halts on it; or
+  // moving past it counts a skip, marking a song the user never heard as disliked.
+  test(
+      'a song that never starts is passed over after 4 loads, without a verdict',
+      () async {
+    await checkStart(8 * 4);
+    expect(player.currentSong?.id, 'a');
+
+    await checkStart(8);
+
+    expect(player.currentSong?.id, 'b');
+    expect(player.lastLeft?.id, 'a');
+    expect(player.lastLeft?.unjudged, isTrue);
+  });
+
+  // RD: the watchdog takes a paused song, or one past its start, for a stuck one, reloading or skipping a song
+  // the user paused or is listening to.
+  test('a paused song, or one that has started, is left alone', () async {
+    final source = ConcatenatingAudioSource(children: []);
+    player.debugGaplessSource = source;
+    runZonedGuarded(() {
+      for (var i = 0; i < 50; i++) {
+        player.checkForStallAtStart();
+      }
+    }, (_, __) {});
+    await player.seek(const Duration(seconds: 30));
+
+    await checkStart(50);
+
+    expect(player.currentSong?.id, 'a');
+    expect(player.debugGaplessSource, same(source));
+  });
+
+  // RD: the start check exists but the timer only runs the end check, so outside tests a song stuck at 0:00
+  // stays stuck.
+  test('the start check runs on its own once a second', () async {
+    late PlayerProvider timed;
+    runZonedGuarded(() {
+      timed = PlayerProvider(
+        service,
+        StorageService(),
+        FakeCastService(),
+        UpnpService(),
+        MuslyAudioHandler(),
+        JukeboxService(),
+        TranscodingService(),
+      );
+    }, (_, __) {});
+    timed.queue.addAll([song('a'), song('b')]);
+    await timed.adoptTrackAt(0);
+    final stuck = ConcatenatingAudioSource(children: []);
+    timed.debugGaplessSource = stuck;
+    timed.debugSetPlaying(true);
+
+    await Future<void>.delayed(const Duration(milliseconds: 8500));
+
+    expect(timed.debugGaplessSource, isNot(same(stuck)));
+    timed.dispose();
+  });
 }
