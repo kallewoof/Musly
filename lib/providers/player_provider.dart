@@ -2517,7 +2517,8 @@ class PlayerProvider extends ChangeNotifier
 
   /// Picks that leave out the songs heard lately, played or skipped (RecommendationService.recentlyHeard), and for
   /// a refill the queue itself. A queue being replaced is not left out: after a whole-library shuffle it holds every
-  /// song. When too few songs are left, the ones heard longest ago come back first, so a small library still plays.
+  /// song. Only when too few songs are left (everything has been heard within the cooldown) do heard songs come
+  /// back, as many as needed, those heard longest ago first.
   List<Song> _smartShufflePicks(int count,
       {bool startingQueue = false, Map<String, PickReason>? reasons}) {
     final rec = _recommendationService;
@@ -2544,7 +2545,7 @@ class PlayerProvider extends ChangeNotifier
     var keepOut = heard.length;
     var picks = pick(keepOut);
     while (picks.length < count && keepOut > 0) {
-      keepOut ~/= 2;
+      keepOut = max(0, keepOut - (count - picks.length));
       picks = pick(keepOut);
     }
     reasons?.addAll(picked);

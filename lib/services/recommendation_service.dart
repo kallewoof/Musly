@@ -52,7 +52,11 @@ class RecommendationService extends ChangeNotifier {
   /// Songs heard here, played or skipped, newest first, for Smart Shuffle's cooldown. Kept apart from
   /// [_recentlyPlayed], which feeds "Listen Again" and must not list skipped songs.
   List<({String id, DateTime at})> _heard = [];
-  static const _heardKept = 1000;
+
+  /// How long a song heard here stays out of Smart Shuffle. The list keeps that long, at most [_heardKept]
+  /// entries: a week of listening, skips included, well past a library of a few thousand songs.
+  static const heardCooldown = Duration(days: 7);
+  static const _heardKept = 10000;
   static const _countsVersion = 2;
 
   @visibleForTesting
@@ -80,16 +84,14 @@ class RecommendationService extends ChangeNotifier {
   Map<String, SongProfile> get profiles => Map.unmodifiable(_profiles);
   List<String> get recentlyPlayed => List.unmodifiable(_recentlyPlayed);
 
-  /// Songs played or skipped here that Smart Shuffle leaves out: the last [count] heard, and any heard within
-  /// [within], whichever reaches further back. Newest first, so a caller short of songs can let the oldest back.
-  List<String> recentlyHeard(
-      {int count = 200, Duration within = const Duration(hours: 24)}) {
-    final since = clock().subtract(within);
+  /// Songs played or skipped here within [heardCooldown], which Smart Shuffle leaves out. Newest first, so a
+  /// caller short of songs can let the oldest back.
+  List<String> recentlyHeard() {
+    final since = clock().subtract(heardCooldown);
     final out = <String>[];
     final seen = <String>{};
-    for (var i = 0; i < _heard.length; i++) {
-      final h = _heard[i];
-      if (i >= count && h.at.isBefore(since)) break;
+    for (final h in _heard) {
+      if (h.at.isBefore(since)) break;
       if (seen.add(h.id)) out.add(h.id);
     }
     return out;
@@ -97,6 +99,10 @@ class RecommendationService extends ChangeNotifier {
 
   void _noteHeard(String id) {
     _heard.insert(0, (id: id, at: clock()));
+    final since = clock().subtract(heardCooldown);
+    while (_heard.isNotEmpty && _heard.last.at.isBefore(since)) {
+      _heard.removeLast();
+    }
     if (_heard.length > _heardKept) _heard = _heard.sublist(0, _heardKept);
   }
 

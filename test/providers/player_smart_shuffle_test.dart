@@ -232,9 +232,10 @@ void main() {
     expect(ids().intersection(skipped.map((s) => s.id).toSet()), isEmpty);
   });
 
-  // RD: the cooldown leaves a small library with nothing to play, or lets back the songs heard last instead of the
-  // ones heard longest ago.
-  test('fills the queue from the songs heard longest ago when too few are left',
+  // RD: the cooldown leaves a library heard all through with nothing to play; or it lets back more heard songs
+  // than the queue needs, or the ones heard last instead of those heard longest ago.
+  test(
+      'fills the queue from the songs heard longest ago, only as many as needed',
       () async {
     final heard = library.songs.take(25).toList();
     await listenedTo(heard);
@@ -242,7 +243,8 @@ void main() {
     await start(player.smartShuffle);
 
     expect(player.queue, hasLength(10));
-    final heardLast = heard.reversed.take(12).map((s) => s.id).toSet();
-    expect(ids().intersection(heardLast), isEmpty);
+    final heardLast = heard.reversed.take(20).map((s) => s.id).toSet();
+    expect(ids().intersection(heardLast), isEmpty,
+        reason: 'five unheard songs and the five heard longest ago fill it');
   });
 }

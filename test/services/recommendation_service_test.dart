@@ -238,27 +238,25 @@ void main() {
     expect(model.recentlyPlayed, isNot(contains('k1')));
   });
 
-  // RD: the cooldown uses only the count, so a song heard an hour ago is offered again after a few hundred quick
-  // skips; or only the time, so on a day of listening the same song returns after 24 hours however much else played.
-  test('keeps a song out while within the last 200 heard or the last 24 hours',
+  // RD: the cooldown is shorter than a week (or bounded by a count), so a song heard a few days ago is offered
+  // again; or it never ends, and a song once skipped is left out for good.
+  test(
+      'keeps a song out for a week after it was heard, however much else played',
       () async {
     var now = DateTime(2026, 11, 17, 8);
     model.clock = () => now;
     await model.trackSkip(Song(id: 'early', title: 'T'));
-    for (var i = 0; i < 250; i++) {
-      now = now.add(const Duration(minutes: 1));
+    for (var i = 0; i < 3000; i++) {
+      now = now.add(const Duration(minutes: 3));
       await model.trackSkip(Song(id: 'later$i', title: 'T'));
     }
 
     expect(model.recentlyHeard(), contains('early'),
-        reason: 'heard within 24 hours, though 250 songs ago');
+        reason: 'heard within the week, 3000 songs ago');
 
-    now = now.add(const Duration(hours: 25));
-    final heard = model.recentlyHeard();
-    expect(heard, isNot(contains('early')));
-    expect(heard, contains('later50'),
-        reason: 'among the last 200, though over 24 hours ago');
-    expect(heard, isNot(contains('later49')));
+    now = DateTime(2026, 11, 24, 8, 1);
+    expect(model.recentlyHeard(), isNot(contains('early')));
+    expect(model.recentlyHeard(), contains('later0'));
   });
 
   // RD: the heard list is not saved, so after a restart the songs skipped before it come straight back.
