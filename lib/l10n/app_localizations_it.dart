@@ -3340,4 +3340,23 @@ class AppLocalizationsIt extends AppLocalizations {
   String editTagsLoadFailed(String error) {
     return 'Could not load the tags: $error';
   }
+
+  @override
+  String get smartShuffleTasteNew => 'New to me';
+
+  @override
+  String get smartShuffleTasteFavourites => 'Favourites';
+
+  @override
+  String get smartShuffleTasteLabel => 'Smart Shuffle: new to me or favourites';
+
+  @override
+  String pickReasonShuffleTowardNew(String rank) {
+    return 'ranked $rank: the slider favours songs heard least';
+  }
+
+  @override
+  String pickReasonShuffleTowardFavourites(String rank) {
+    return 'ranked $rank: the slider favours songs liked most';
+  }
 }

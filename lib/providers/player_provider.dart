@@ -115,6 +115,9 @@ class PlayerProvider extends ChangeNotifier
   /// Why the songs of the current queue are in it, by song id, for the queues an algorithm picked.
   Map<String, PickReason> _pickReasons = {};
 
+  @visibleForTesting
+  PickReason? debugPickReasonOf(String songId) => _pickReasons[songId];
+
   PickReason? get currentPickReason =>
       _currentSong == null ? null : _pickReasons[_currentSong!.id];
 
@@ -1208,6 +1211,11 @@ class PlayerProvider extends ChangeNotifier
 
     _storageService.getShuffleMode().then((saved) {
       _shuffleEnabled = saved;
+      notifyListeners();
+    });
+
+    _storageService.getSmartShuffleTaste().then((saved) {
+      _smartShuffleTaste = saved;
       notifyListeners();
     });
 
@@ -2455,6 +2463,20 @@ class PlayerProvider extends ChangeNotifier
     _saveQueueState();
   }
 
+  double _smartShuffleTaste = SmartShuffle.neutralTaste;
+
+  /// Smart Shuffle's slider: 0 plays the songs heard least, 1 those liked most, the middle goes by the draw
+  /// alone (SmartShuffle.rank).
+  double get smartShuffleTaste => _smartShuffleTaste;
+
+  /// Moves the slider. A running Smart Shuffle re-picks the songs after the current one at once.
+  Future<void> setSmartShuffleTaste(double taste) async {
+    _smartShuffleTaste = taste.clamp(0.0, 1.0);
+    unawaited(_storageService.saveSmartShuffleTaste(_smartShuffleTaste));
+    notifyListeners();
+    if (isSmartShuffle) await smartShuffle();
+  }
+
   /// What the server says was heard within the cooldown on any device, for [_smartShufflePicks]. Fetched
   /// before each batch of picks; when the server cannot say, the picks go by this device's own record.
   List<({String id, DateTime at})> _heardElsewhere = const [];
@@ -2561,6 +2583,7 @@ class PlayerProvider extends ChangeNotifier
                     s.knownArtist
                 ],
           reasons: picked = {},
+          taste: _smartShuffleTaste,
         );
     var keepOut = heard.length;
     var picks = pick(keepOut);

@@ -4,6 +4,7 @@ import 'package:musly/models/song.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/widgets/common/album_artwork.dart';
 import 'package:musly/widgets/now_playing/pick_reason_list.dart';
+import 'package:musly/widgets/now_playing/smart_shuffle_taste_slider.dart';
 import 'package:musly/utils/navigation_helper.dart';
 
 class RightSidebar extends StatelessWidget {
@@ -157,6 +158,9 @@ class RightSidebar extends StatelessWidget {
                                   if (player.currentPickReason
                                       case final reason?)
                                     PickReasonList(reason: reason),
+                                  if (player.isSmartShuffle)
+                                    const SmartShuffleTasteSlider(
+                                        color: Color(0xFFB3B3B3)),
                                 ],
                               ),
                             ),

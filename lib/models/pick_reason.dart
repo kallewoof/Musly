@@ -22,6 +22,8 @@ sealed class PickReason {
             'artistMean': p.artistMean,
             'draw': p.draw,
             'typical': p.typical,
+            'taste': p.taste,
+            'rank': p.rank,
           },
         RadioPick p => {
             'kind': 'radio',
@@ -51,6 +53,9 @@ sealed class PickReason {
           artistMean: j['artistMean'] == null ? null : d(j['artistMean']),
           draw: d(j['draw']),
           typical: d(j['typical']),
+          // Reasons saved before the slider were picked at its middle, by the draw.
+          taste: j['taste'] == null ? 0.5 : d(j['taste']),
+          rank: j['rank'] == null ? null : d(j['rank']),
         ),
       'radio' => RadioPick(
           seedTitle: j['seedTitle'] as String,
@@ -117,8 +122,8 @@ class ListenAgainPick extends PickReason {
 }
 
 /// A Smart Shuffle pick: the evidence that shaped the song's Beta distribution, and the value drawn from
-/// it. The songs with the highest draws are played, so a [draw] well above [typical] is the shuffle
-/// exploring, and a high [typical] is a song the user is known to like.
+/// it. The songs ranked highest are played; at the slider's middle the rank is the draw, so a [draw] well
+/// above [typical] is the shuffle exploring, and a high [typical] is a song the user is known to like.
 class ShufflePick extends PickReason {
   const ShufflePick({
     required this.completes,
@@ -127,7 +132,9 @@ class ShufflePick extends PickReason {
     required this.artistMean,
     required this.draw,
     required this.typical,
-  });
+    this.taste = 0.5,
+    double? rank,
+  }) : rank = rank ?? draw;
 
   final int completes;
   final int skips;
@@ -139,6 +146,10 @@ class ShufflePick extends PickReason {
 
   /// The distribution's mean: what draws for this song average.
   final double typical;
+
+  /// The slider's position when it was picked (SmartShuffle.rank), and what the song was ranked by there.
+  final double taste;
+  final double rank;
 }
 
 /// Where a radio's songs came from: the server's similar songs, or the fallback used when it had none.

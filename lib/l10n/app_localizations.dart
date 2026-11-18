@@ -6075,6 +6075,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not load the tags: {error}'**
   String editTagsLoadFailed(String error);
+
+  /// Smart Shuffle slider, left end: play the songs heard least
+  ///
+  /// In en, this message translates to:
+  /// **'New to me'**
+  String get smartShuffleTasteNew;
+
+  /// Smart Shuffle slider, right end: play the songs liked most
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get smartShuffleTasteFavourites;
+
+  /// Accessibility label of the Smart Shuffle slider
+  ///
+  /// In en, this message translates to:
+  /// **'Smart Shuffle: new to me or favourites'**
+  String get smartShuffleTasteLabel;
+
+  /// Smart Shuffle: the rank the slider (toward new songs) gave the song
+  ///
+  /// In en, this message translates to:
+  /// **'ranked {rank}: the slider favours songs heard least'**
+  String pickReasonShuffleTowardNew(String rank);
+
+  /// Smart Shuffle: the rank the slider (toward favourites) gave the song
+  ///
+  /// In en, this message translates to:
+  /// **'ranked {rank}: the slider favours songs liked most'**
+  String pickReasonShuffleTowardFavourites(String rank);
 }
 
 class _AppLocalizationsDelegate

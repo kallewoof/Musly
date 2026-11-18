@@ -29,6 +29,26 @@ class SmartShuffle {
   /// An artist's songs are at least this many picks apart, when the library allows it.
   static const int artistGap = 3;
 
+  /// The slider's middle, where songs are ranked by their draw alone.
+  static const double neutralTaste = 0.5;
+
+  /// How a song is ranked with the slider at [taste]. Left of the middle, songs heard least gain up to
+  /// three times their [novelty], so at the far left a song never heard (novelty 1) outranks any heard one
+  /// (at most 0.25), whatever their draws; right of it, the draw gives way to [typical], so at the far right songs play in order of
+  /// how much the user likes them.
+  static double rank(
+      {required double draw,
+      required double typical,
+      required double novelty,
+      required double taste}) {
+    if (taste <= neutralTaste) return draw + (1 - 2 * taste) * 3 * novelty;
+    final toward = 2 * taste - 1;
+    return (1 - toward) * draw + toward * typical;
+  }
+
+  /// 1 for a song never heard, and at most 0.25 for one heard, less the more it was heard.
+  static double novelty(int listens) => listens == 0 ? 1 : 0.5 / (1 + listens);
+
   /// Up to [count] songs from [candidates], never one in [exclude]. [recentArtists] are the artists just
   /// queued, newest last, so the gap holds across refills. Each pick's [ShufflePick] goes into [reasons].
   List<Song> pick(
@@ -38,6 +58,7 @@ class SmartShuffle {
     required ListenOutcomes Function(Song) outcomes,
     List<String?> recentArtists = const [],
     Map<String, PickReason>? reasons,
+    double taste = neutralTaste,
   }) {
     final counts = <String, ListenOutcomes>{};
     final evidence = <String, ({double good, double bad})>{};
@@ -69,6 +90,9 @@ class SmartShuffle {
       final alpha = e.good + priorStrength * mean;
       final beta = e.bad + priorStrength * (1 - mean);
       final o = counts[song.id]!;
+      final draw = _beta(alpha, beta);
+      final typical = alpha / (alpha + beta);
+      final listens = max(song.playCount ?? 0, o.completes + o.skips);
       drawn.add((
         song,
         ShufflePick(
@@ -76,12 +100,22 @@ class SmartShuffle {
           skips: o.skips,
           starred: song.starred == true,
           artistMean: a == null ? null : mean,
-          draw: _beta(alpha, beta),
-          typical: alpha / (alpha + beta),
+          draw: draw,
+          typical: typical,
+          taste: taste,
+          rank: rank(
+              draw: draw,
+              typical: typical,
+              novelty: novelty(listens),
+              taste: taste),
         )
       ));
     }
-    drawn.sort((x, y) => y.$2.draw.compareTo(x.$2.draw));
+    // Ties (at the far right, songs no listen has told apart) go by the draw, so they still vary.
+    drawn.sort((x, y) {
+      final byRank = y.$2.rank.compareTo(x.$2.rank);
+      return byRank != 0 ? byRank : y.$2.draw.compareTo(x.$2.draw);
+    });
 
     final picked = <Song>[];
     final taken = <String>{};

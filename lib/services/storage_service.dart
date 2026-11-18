@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
+import 'smart_shuffle.dart';
 import '../models/server_config.dart';
 
 class StorageService {
@@ -22,6 +23,7 @@ class StorageService {
   static const String _queueKey = 'queue';
   static const String _queueIndexKey = 'queue_index';
   static const String _shuffleModeKey = 'shuffle_mode';
+  static const String _smartShuffleTasteKey = 'smart_shuffle_taste';
   static const String _repeatModeKey = 'repeat_mode';
   static const String _gaplessPlaybackKey = 'gapless_playback';
   static const String _lrcLibFallbackKey = 'lrclib_fallback';
@@ -446,6 +448,16 @@ class StorageService {
   Future<bool> getShuffleMode() async {
     final prefs = await _prefs;
     return prefs.getBool(_shuffleModeKey) ?? false;
+  }
+
+  Future<void> saveSmartShuffleTaste(double taste) async {
+    final prefs = await _prefs;
+    await prefs.setDouble(_smartShuffleTasteKey, taste);
+  }
+
+  Future<double> getSmartShuffleTaste() async {
+    final prefs = await _prefs;
+    return prefs.getDouble(_smartShuffleTasteKey) ?? SmartShuffle.neutralTaste;
   }
 
   Future<void> saveRepeatMode(int mode) async {

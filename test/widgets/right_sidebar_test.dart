@@ -35,6 +35,15 @@ class _Player extends PlayerProvider {
   @override
   List<Song> get queue => [song];
 
+  bool smart = true;
+  double? tasteSet;
+
+  @override
+  bool get isSmartShuffle => smart;
+
+  @override
+  Future<void> setSmartShuffleTaste(double taste) async => tasteSet = taste;
+
   @override
   PickReason? get currentPickReason => const ShufflePick(
       completes: 2,
@@ -68,5 +77,35 @@ void main() {
 
     expect(find.text('drew .90 (typical .60); the highest draws play'),
         findsOneWidget);
+  });
+
+  Future<void> pumpPanel(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(ChangeNotifierProvider<PlayerProvider>.value(
+      value: player,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: SizedBox(width: 320, child: RightSidebar())),
+      ),
+    ));
+    await tester.pump();
+  }
+
+  // RD: the slider is left out of the desktop panel, or shown when Smart Shuffle is off, where it does nothing; or
+  // letting go of it does not reach the player.
+  testWidgets('the desktop panel has the Smart Shuffle slider while it runs',
+      (tester) async {
+    player.smart = false;
+    await pumpPanel(tester);
+    expect(find.byKey(const ValueKey('smart-shuffle-taste')), findsNothing);
+
+    player.smart = true;
+    await pumpPanel(tester);
+    await tester.drag(find.byType(Slider), const Offset(-300, 0));
+    await tester.pump();
+
+    expect(find.text('New to me'), findsOneWidget);
+    expect(player.tasteSet, 0.0);
   });
 }

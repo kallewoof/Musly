@@ -207,4 +207,85 @@ void main() {
 
     expect(picked[2].id, 'skipped');
   });
+
+  /// The first [count] picks with the slider at [taste], over the seeds [seeds].
+  List<List<String>> picksAt(
+          double taste, List<Song> songs, Map<String, ListenOutcomes> history,
+          {int count = 3, int seeds = 20}) =>
+      [
+        for (var seed = 0; seed < seeds; seed++)
+          SmartShuffle(random: Random(seed))
+              .pick(songs, count,
+                  exclude: const {},
+                  outcomes: (s) => history[s.id] ?? (completes: 0, skips: 0),
+                  taste: taste)
+              .map((s) => s.id)
+              .toList(),
+      ];
+
+  // RD: the left end only nudges the draw, so with a large unheard backlog favourites still crowd out new songs;
+  // or it boosts heard songs as much as unheard ones.
+  test('at the far left, plays only songs never heard while there are any', () {
+    final songs = [
+      for (var i = 0; i < 4; i++) song('loved$i', artist: 'A$i'),
+      for (var i = 0; i < 12; i++) song('new$i', artist: 'N$i'),
+    ];
+    final history = {
+      for (var i = 0; i < 4; i++) 'loved$i': (completes: 8, skips: 0)
+    };
+
+    for (final picks in picksAt(0, songs, history, count: 10)) {
+      expect(picks.where((id) => id.startsWith('loved')), isEmpty);
+    }
+  });
+
+  // RD: novelty ignores how often a heard song was heard, so the left end plays a song heard many times as
+  // readily as one heard once.
+  test('left of the middle, prefers songs heard less', () {
+    final songs = [song('once', artist: 'A'), song('often', artist: 'B')];
+    final history = {
+      'once': (completes: 1, skips: 0),
+      'often': (completes: 9, skips: 0),
+    };
+
+    final firsts = picksAt(0, songs, history, count: 1, seeds: 200);
+
+    expect(firsts.where((p) => p.single == 'once').length, greaterThan(150));
+  });
+
+  // RD: the right end still ranks by the random draw, so it keeps exploring unheard songs instead of playing
+  // the favourites; or it ranks by the evidence backwards.
+  test('at the far right, plays the songs liked most, in order', () {
+    final songs = [
+      song('loved', artist: 'A', starred: true),
+      song('liked', artist: 'B'),
+      song('skipped', artist: 'C'),
+      for (var i = 0; i < 10; i++) song('new$i', artist: 'N$i'),
+    ];
+    final history = {
+      'loved': (completes: 6, skips: 0),
+      'liked': (completes: 4, skips: 1),
+      'skipped': (completes: 0, skips: 5),
+    };
+
+    for (final picks in picksAt(1, songs, history, count: 2)) {
+      expect(picks, ['loved', 'liked']);
+    }
+  });
+
+  // RD: the slider's middle changes the ranking, so Smart Shuffle with the slider untouched no longer behaves as
+  // it did; or the recorded rank is not what ranked the song.
+  test('in the middle, ranks by the draw alone', () {
+    final reasons = <String, PickReason>{};
+    final songs = [for (var i = 0; i < 8; i++) song('s$i', artist: 'A$i')];
+    SmartShuffle(random: Random(4)).pick(songs, 8,
+        exclude: const {},
+        outcomes: (_) => (completes: 1, skips: 0),
+        reasons: reasons);
+
+    final picks = reasons.values.cast<ShufflePick>().toList();
+    expect(picks.every((p) => p.rank == p.draw), isTrue);
+    final ranks = [for (final p in picks) p.rank];
+    expect(ranks, [...ranks]..sort((a, b) => b.compareTo(a)));
+  });
 }

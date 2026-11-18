@@ -270,4 +270,36 @@ void main() {
         int.parse(server.lastParams['getRecentlyHeard']!['since']!.single));
     expect(now.difference(since).inHours, inInclusiveRange(167, 169));
   });
+
+  // RD: moving the slider only applies from the next refill, so the songs queued next ignore it; or it replaces
+  // the playing song; or the position is not saved, and a restart puts the slider back in the middle.
+  test(
+      'moving the slider re-picks the songs after the current one, and is kept',
+      () async {
+    await start(player.smartShuffle);
+    final playing = player.currentSong;
+
+    await start(() => player.setSmartShuffleTaste(0));
+
+    expect(player.currentSong, playing);
+    expect(player.queue.first, playing);
+    final upcoming = [
+      for (final s in player.queue.skip(1))
+        player.debugPickReasonOf(s.id) as ShufflePick
+    ];
+    expect(upcoming, isNotEmpty);
+    expect(upcoming.every((r) => r.taste == 0), isTrue);
+
+    final again = PlayerProvider(
+        SubsonicService(),
+        StorageService(),
+        FakeCastService(),
+        UpnpService(),
+        MuslyAudioHandler(),
+        JukeboxService(),
+        TranscodingService());
+    addTearDown(again.dispose);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(again.smartShuffleTaste, 0.0);
+  });
 }

@@ -75,6 +75,10 @@ List<String> pickReasonLines(PickReason reason, AppLocalizations l10n) {
         else
           l10n.pickReasonShuffleNoArtist,
         l10n.pickReasonShuffleDraw(_fixed(reason.draw), _fixed(reason.typical)),
+        if (reason.taste < SmartShuffle.neutralTaste)
+          l10n.pickReasonShuffleTowardNew(_fixed(reason.rank))
+        else if (reason.taste > SmartShuffle.neutralTaste)
+          l10n.pickReasonShuffleTowardFavourites(_fixed(reason.rank)),
       ];
     case RadioPick():
       final title = reason.seedTitle;

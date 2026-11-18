@@ -4,6 +4,7 @@ import 'package:musly/widgets/now_playing/album_art_view.dart';
 import 'package:musly/widgets/now_playing/marquee_text.dart';
 import 'package:musly/widgets/now_playing/playback_controls.dart';
 import 'package:musly/widgets/now_playing/pick_reason_list.dart';
+import 'package:musly/widgets/now_playing/smart_shuffle_taste_slider.dart';
 import 'package:musly/widgets/now_playing/playback_progress_slider.dart';
 import 'package:musly/widgets/now_playing/volume_slider.dart';
 import 'package:musly/widgets/now_playing/now_playing_bottom_actions.dart';
@@ -610,6 +611,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                 ),
                 if (provider.currentPickReason case final reason?)
                   PickReasonList(reason: reason),
+                if (provider.isSmartShuffle)
+                  SmartShuffleTasteSlider(
+                      color: Colors.white.withValues(alpha: 0.55)),
               ],
             ),
           ),

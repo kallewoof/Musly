@@ -29,9 +29,17 @@ class _ExplainingPlayer extends PlayerProvider {
             TranscodingService());
 
   final PickReason? reason;
+  bool smart = false;
+  double? tasteSet;
 
   @override
   PickReason? get currentPickReason => reason;
+
+  @override
+  bool get isSmartShuffle => smart;
+
+  @override
+  Future<void> setSmartShuffleTaste(double taste) async => tasteSet = taste;
 }
 
 void main() {
@@ -46,10 +54,11 @@ void main() {
   ], jitter: 0.07);
 
   // Built outside the tests' fake time, where the player's own timer would be left pending.
-  late _ExplainingPlayer unexplained, explained;
+  late _ExplainingPlayer unexplained, explained, shuffling;
   setUp(() {
     unexplained = _ExplainingPlayer(null);
     explained = _ExplainingPlayer(mixPick);
+    shuffling = _ExplainingPlayer(mixPick)..smart = true;
   });
 
   Future<void> pumpNowPlaying(WidgetTester tester, PlayerProvider player,
@@ -85,6 +94,34 @@ void main() {
     expect(find.text('= .19: ranked by'), findsOneWidget);
 
     // Let the screen's delayed work (the title's marquee) run out after it is gone.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 10));
+  });
+
+  // RD: the slider is left out of Now Playing, or shown when Smart Shuffle is off; or letting go of it does not
+  // reach the player.
+  testWidgets('Now Playing has the Smart Shuffle slider while it runs',
+      (tester) async {
+    await pumpNowPlaying(tester, explained);
+    expect(find.byKey(const ValueKey('smart-shuffle-taste')), findsNothing);
+
+    await pumpNowPlaying(tester, shuffling);
+    await tester.drag(find.byKey(const ValueKey('smart-shuffle-taste')),
+        const Offset(400, 0));
+    await tester.pump();
+    expect(shuffling.tasteSet, 1.0);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 10));
+  });
+
+  // RD: the slider's extra row pushes the controls off a short landscape screen.
+  testWidgets('the slider fits a landscape Now Playing', (tester) async {
+    await pumpNowPlaying(tester, shuffling, size: const Size(850, 400));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('smart-shuffle-taste')), findsOneWidget);
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 10));
   });
@@ -141,5 +178,26 @@ void main() {
       "artist's other songs: 80% good, worth 2 listens",
       'drew .91 (typical .62); the highest draws play',
     ]);
+  });
+
+  // RD: a pick ranked with the slider off its middle shows only the draw, which did not decide its place; or the
+  // line names the wrong end.
+  test('says how the slider ranked a Smart Shuffle pick', () {
+    ShufflePick at(double taste) => ShufflePick(
+        completes: 0,
+        skips: 0,
+        starred: false,
+        artistMean: null,
+        draw: 0.4,
+        typical: 0.5,
+        taste: taste,
+        rank: 2.4);
+
+    expect(pickReasonLines(at(0.5), l10n).last,
+        'drew .40 (typical .50); the highest draws play');
+    expect(pickReasonLines(at(0.2), l10n).last,
+        'ranked 2.40: the slider favours songs heard least');
+    expect(pickReasonLines(at(0.8), l10n).last,
+        'ranked 2.40: the slider favours songs liked most');
   });
 }

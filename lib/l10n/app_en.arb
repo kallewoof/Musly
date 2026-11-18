@@ -4098,5 +4098,35 @@
         "type": "String"
       }
     }
+  },
+  "smartShuffleTasteNew": "New to me",
+  "@smartShuffleTasteNew": {
+    "description": "Smart Shuffle slider, left end: play the songs heard least"
+  },
+  "smartShuffleTasteFavourites": "Favourites",
+  "@smartShuffleTasteFavourites": {
+    "description": "Smart Shuffle slider, right end: play the songs liked most"
+  },
+  "smartShuffleTasteLabel": "Smart Shuffle: new to me or favourites",
+  "@smartShuffleTasteLabel": {
+    "description": "Accessibility label of the Smart Shuffle slider"
+  },
+  "pickReasonShuffleTowardNew": "ranked {rank}: the slider favours songs heard least",
+  "@pickReasonShuffleTowardNew": {
+    "description": "Smart Shuffle: the rank the slider (toward new songs) gave the song",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      }
+    }
+  },
+  "pickReasonShuffleTowardFavourites": "ranked {rank}: the slider favours songs liked most",
+  "@pickReasonShuffleTowardFavourites": {
+    "description": "Smart Shuffle: the rank the slider (toward favourites) gave the song",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      }
+    }
   }
 }

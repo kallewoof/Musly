@@ -31,7 +31,10 @@ void main() {
         starred: true,
         artistMean: 0.6,
         draw: 0.71,
-        typical: 0.55)) as ShufflePick;
+        typical: 0.55,
+        taste: 0.2,
+        rank: 2.71)) as ShufflePick;
+    expect((shuffle.taste, shuffle.rank), (0.2, 2.71));
     expect((
       shuffle.completes,
       shuffle.skips,
