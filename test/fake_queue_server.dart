@@ -16,6 +16,10 @@ class FakeQueueServer {
   /// On for our navidrome build, which keeps the saving client's state with the queue.
   bool queueState = false;
 
+  /// What getRecentlyHeard answers (our navidrome build): songs heard on any device, newest first. Null for a
+  /// server without the extension.
+  List<({String id, DateTime at})>? recentlyHeard;
+
   /// Delays the queue lookup, to let a test act while a device waits for the server.
   Duration getDelay = Duration.zero;
   int gets = 0;
@@ -110,6 +114,11 @@ class FakeQueueServer {
             'name': 'unimouseQueueState',
             'versions': [1]
           },
+        if (recentlyHeard != null)
+          {
+            'name': 'unimouseRecentlyHeard',
+            'versions': [1]
+          },
       ];
     } else if (req.uri.path.endsWith('/setTagOverlay')) {
       response['tagOverlay'] = {'id': params['id']!.single};
@@ -125,6 +134,16 @@ class FakeQueueServer {
       response['randomSongs'] = {
         'song': [
           for (final id in randomIds) {'id': id, 'title': 'T-$id'}
+        ]
+      };
+    } else if (req.uri.path.endsWith('/getRecentlyHeard')) {
+      final since = DateTime.fromMillisecondsSinceEpoch(
+          int.parse(params['since']!.single));
+      response['recentlyHeard'] = {
+        'song': [
+          for (final h in recentlyHeard ?? const <({String id, DateTime at})>[])
+            if (!h.at.isBefore(since))
+              {'id': h.id, 'heard': h.at.toUtc().toIso8601String()}
         ]
       };
     } else if (req.uri.path.endsWith('/getPlayQueueByIndex')) {

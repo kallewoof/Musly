@@ -1525,6 +1525,7 @@ class PlayerProvider extends ChangeNotifier
       if (shouldRefillAutoDj) {
         await _addAutoDjSongs();
       } else if (shouldRefillRadio && _refill == QueueRefill.smartShuffle) {
+        await _fetchHeardElsewhere();
         await _appendToQueue(
             _smartShufflePicks(_smartShuffleBatch, reasons: _pickReasons));
       } else if (shouldRefillRadio) {
@@ -2454,9 +2455,27 @@ class PlayerProvider extends ChangeNotifier
     _saveQueueState();
   }
 
+  /// What the server says was heard within the cooldown on any device, for [_smartShufflePicks]. Fetched
+  /// before each batch of picks; when the server cannot say, the picks go by this device's own record.
+  List<({String id, DateTime at})> _heardElsewhere = const [];
+
+  Future<void> _fetchHeardElsewhere() async {
+    try {
+      _heardElsewhere = await _subsonicService
+          .getRecentlyHeard(
+              DateTime.now().subtract(RecommendationService.heardCooldown))
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint(
+          '[SmartShuffle] recently heard unavailable, using this device only: $e');
+      _heardElsewhere = const [];
+    }
+  }
+
   /// Starts Smart Shuffle: a queue picked from the library by what the user finishes and skips, mixed with
   /// songs not heard yet, and topped up as it runs low. A song already playing goes on, with the picks after it.
   Future<void> smartShuffle() async {
+    await _fetchHeardElsewhere();
     final current = _isPlayingRadio ? null : _currentSong;
     final reasons = <String, PickReason>{};
     final picks = _smartShufflePicks(_smartShuffleBatch,
@@ -2522,7 +2541,8 @@ class PlayerProvider extends ChangeNotifier
   List<Song> _smartShufflePicks(int count,
       {bool startingQueue = false, Map<String, PickReason>? reasons}) {
     final rec = _recommendationService;
-    final heard = rec?.recentlyHeard() ?? const <String>[];
+    final heard =
+        rec?.recentlyHeard(elsewhere: _heardElsewhere) ?? const <String>[];
     var picked = <String, PickReason>{};
     List<Song> pick(int keepOut) => _smartShuffle.pick(
           _libraryProvider?.cachedAllSongs ?? const [],

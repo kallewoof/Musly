@@ -84,13 +84,16 @@ class RecommendationService extends ChangeNotifier {
   Map<String, SongProfile> get profiles => Map.unmodifiable(_profiles);
   List<String> get recentlyPlayed => List.unmodifiable(_recentlyPlayed);
 
-  /// Songs played or skipped here within [heardCooldown], which Smart Shuffle leaves out. Newest first, so a
-  /// caller short of songs can let the oldest back.
-  List<String> recentlyHeard() {
+  /// Songs played or skipped within [heardCooldown], which Smart Shuffle leaves out: those heard here, and
+  /// [elsewhere], what the server says was heard on any device. Newest first, so a caller short of songs can
+  /// let the oldest back.
+  List<String> recentlyHeard(
+      {List<({String id, DateTime at})> elsewhere = const []}) {
     final since = clock().subtract(heardCooldown);
+    final all = [..._heard, ...elsewhere]..sort((a, b) => b.at.compareTo(a.at));
     final out = <String>[];
     final seen = <String>{};
-    for (final h in _heard) {
+    for (final h in all) {
       if (h.at.isBefore(since)) break;
       if (seen.add(h.id)) out.add(h.id);
     }

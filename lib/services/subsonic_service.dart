@@ -614,6 +614,22 @@ class SubsonicService {
     return (song: Song.fromJson(json), composers: composers);
   }
 
+  /// The songs the user played or skipped since [since], on any device, newest first. Empty from a server
+  /// without the `unimouseRecentlyHeard` extension.
+  Future<List<({String id, DateTime at})>> getRecentlyHeard(
+      DateTime since) async {
+    if (!(await openSubsonicExtensions()).contains('unimouseRecentlyHeard')) {
+      return const [];
+    }
+    final response = await _request(
+        'getRecentlyHeard', {'since': '${since.millisecondsSinceEpoch}'});
+    final songs = response['recentlyHeard']?['song'] as List<dynamic>? ?? [];
+    return [
+      for (final s in songs.cast<Map<String, dynamic>>())
+        (id: s['id'] as String, at: DateTime.parse(s['heard'] as String)),
+    ];
+  }
+
   Future<RemotePlayQueue?> getPlayQueue() async {
     final response = await _request('getPlayQueueByIndex');
     final queue = response['playQueueByIndex'];

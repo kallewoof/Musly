@@ -259,6 +259,22 @@ void main() {
     expect(model.recentlyHeard(), contains('later0'));
   });
 
+  // RD: what other devices heard is ignored, or kept out past the week, or put ahead of this device's own newer
+  // listens, so the oldest-first let-back returns a song heard here minutes ago.
+  test('merges songs heard elsewhere into the cooldown, newest first',
+      () async {
+    final now = DateTime(2026, 11, 18, 12);
+    model.clock = () => now;
+    await model.trackSkip(Song(id: 'here', title: 'T'));
+
+    final heard = model.recentlyHeard(elsewhere: [
+      (id: 'phone', at: now.subtract(const Duration(days: 2))),
+      (id: 'phone-old', at: now.subtract(const Duration(days: 8))),
+    ]);
+
+    expect(heard, ['here', 'phone']);
+  });
+
   // RD: the heard list is not saved, so after a restart the songs skipped before it come straight back.
   test('keeps the heard songs across a restart', () async {
     await model.trackSkip(Song(id: 'k1', title: 'T'));

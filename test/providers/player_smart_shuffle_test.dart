@@ -247,4 +247,27 @@ void main() {
     expect(ids().intersection(heardLast), isEmpty,
         reason: 'five unheard songs and the five heard longest ago fill it');
   });
+
+  // RD: only this device's listens are left out, so songs heard on the phone this week are queued on the desktop;
+  // or the server's list is taken whole, songs heard before the week included.
+  test('leaves out the songs heard on other devices this week', () async {
+    final now = DateTime.now();
+    server.recentlyHeard = [
+      for (final s in library.songs.take(15))
+        (id: s.id, at: now.subtract(const Duration(hours: 5))),
+      (id: library.songs[20].id, at: now.subtract(const Duration(days: 8))),
+    ];
+    await listenedTo(const []);
+
+    await start(player.smartShuffle);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(player.queue, hasLength(10));
+    expect(ids().intersection(library.songs.take(15).map((s) => s.id).toSet()),
+        isEmpty);
+    // The server is asked for the week only (milliseconds since the epoch), not the whole history.
+    final since = DateTime.fromMillisecondsSinceEpoch(
+        int.parse(server.lastParams['getRecentlyHeard']!['since']!.single));
+    expect(now.difference(since).inHours, inInclusiveRange(167, 169));
+  });
 }
