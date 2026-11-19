@@ -55,7 +55,7 @@ class PlaybackReporter {
   /// The song is being replaced. Left with Back, past a song that never started, or while paused, it gets no
   /// verdict: going back is to hear an earlier song again, a song that never played was not heard, and a paused
   /// song was replaced by an adopted or restored queue, or already abandoned.
-  /// Past 90% it was heard, however it ended. How long it was heard comes from the player, which counts it by
+  /// A finished listen (_verdict) was heard, however it ended. How long it was heard comes from the player, which counts it by
   /// the clock; the position seen here can be stale, as position changes do not notify listeners.
   void _leave() {
     final left = _song;
@@ -64,27 +64,38 @@ class PlaybackReporter {
     final fromPlayer = handed != null && handed.id == left.id;
     if (fromPlayer && handed.unjudged) return;
     final heard = fromPlayer ? handed.heard : _position;
-    final seconds = left.duration ?? 0;
-    final finished = seconds > 0 && heard.inMilliseconds >= seconds * 900;
-    if (!_playing && !finished) return;
-    _judge(left, heard, finished);
+    final verdict = _verdict(left.duration ?? 0, heard);
+    if (!_playing && verdict != _Verdict.finished) return;
+    _judge(left, heard, verdict);
     _send(left, 'stopped', heard);
   }
 
-  /// The taste model takes the verdict the server draws from the stop: a skip before the scrobble point (half
-  /// the song, at most four minutes), a completion from 90%, and between them a listen that counts as neither.
-  void _judge(Song song, Duration heard, bool finished) {
+  /// The verdict the server draws from the stop: a skip before the scrobble point (half the song, at most four
+  /// minutes); a finish from 90% of the song or its last 30 seconds, whichever comes first; between them, or for
+  /// a song of unknown length, a listen that counts as neither.
+  static _Verdict _verdict(int seconds, Duration heard) {
+    if (seconds <= 0) return _Verdict.neither;
+    final ms = heard.inMilliseconds;
+    final durationMs = seconds * 1000;
+    if (ms < min(seconds * 500, 240000)) return _Verdict.skipped;
+    if (ms >= min(durationMs * 9 ~/ 10, durationMs - 30000)) {
+      return _Verdict.finished;
+    }
+    return _Verdict.neither;
+  }
+
+  /// The taste model takes the same verdict as the server.
+  void _judge(Song song, Duration heard, _Verdict verdict) {
     final rec = _recommendations;
     if (rec == null) return;
-    final seconds = song.duration ?? 0;
-    final scrobblePointMs = min(seconds * 500, 240000);
-    if (finished) {
-      rec.trackSongPlay(song,
-          durationPlayed: heard.inSeconds, completed: true);
-    } else if (seconds > 0 && heard.inMilliseconds < scrobblePointMs) {
-      rec.trackSkip(song, secondsPlayed: heard.inSeconds);
-    } else {
-      rec.trackSongPlay(song, durationPlayed: heard.inSeconds);
+    switch (verdict) {
+      case _Verdict.finished:
+        rec.trackSongPlay(song,
+            durationPlayed: heard.inSeconds, completed: true);
+      case _Verdict.skipped:
+        rec.trackSkip(song, secondsPlayed: heard.inSeconds);
+      case _Verdict.neither:
+        rec.trackSongPlay(song, durationPlayed: heard.inSeconds);
     }
   }
 
@@ -106,3 +117,5 @@ class PlaybackReporter {
       !_service.isYoutube &&
       (await _service.openSubsonicExtensions()).contains('playbackReport');
 }
+
+enum _Verdict { skipped, neither, finished }

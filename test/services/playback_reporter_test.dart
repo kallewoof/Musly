@@ -202,18 +202,29 @@ void main() {
     expect(server.reports, ['starting a 0', 'stopped a 150', 'starting b 0']);
   });
 
-  // RD: the taste model keeps its own rule (or none), so what counts as a skip here differs from the server's
-  // count, and skipped songs are recorded as listens.
+  // RD: the taste model keeps its own rule (or none), so what counts as a skip or a finish here differs from
+  // the server's count: skipped songs are recorded as listens, or a song stopped in its outro is not finished.
   test('gives the taste model the server\'s verdict: skip, partial or finished',
       () async {
     final c = Song(id: 'c', title: 'C', duration: 600);
+    final d = Song(id: 'd', title: 'D', duration: 40);
     player.show(song: a, playing: true, seconds: 0);
     leave(a, b, heard: 30); // 200 s: before the scrobble point at 100 s
-    leave(b, c, heard: 120); // 180 s: past 90 s, short of 162 s
-    leave(c, a, heard: 560); // 600 s: past 90%
+    leave(b, c, heard: 149); // 180 s: past 90 s, short of its last 30 s (150 s)
+    leave(c, b, heard: 545); // 600 s: at 90% (540 s), before its last 30 s
+    leave(b, d, heard: 150); // 180 s: in its last 30 s, before 90% (162 s)
+    leave(d, a,
+        heard:
+            15); // 40 s: in its last 30 s, but before the scrobble point at 20 s
     await settled();
 
-    expect(taste.verdicts, ['skip a 30', 'partial b 120', 'finished c 560']);
+    expect(taste.verdicts, [
+      'skip a 30',
+      'partial b 149',
+      'finished c 545',
+      'finished b 150',
+      'skip d 15'
+    ]);
   });
 
   // RD: a song swapped out while paused is recorded here as skipped, though the server is told nothing.

@@ -6142,7 +6142,7 @@ abstract class AppLocalizations {
   /// **'never'**
   String get songInfoNever;
 
-  /// Song info: listens heard to 90% or more
+  /// Song info: listens heard to 90% of the song or into its last 30 seconds
   ///
   /// In en, this message translates to:
   /// **'Finished'**
