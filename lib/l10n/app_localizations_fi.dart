@@ -3228,6 +3228,11 @@ class AppLocalizationsFi extends AppLocalizations {
   String get pickReasonListenAgain => 'you played it recently';
 
   @override
+  String pickReasonShufflePlays(int plays) {
+    return 'played $plays× (all devices)';
+  }
+
+  @override
   String pickReasonShuffleListens(int completes, int skips) {
     return 'finished $completes×, skipped $skips×';
   }
@@ -3338,4 +3343,77 @@ class AppLocalizationsFi extends AppLocalizations {
   String pickReasonShuffleTowardFavourites(String rank) {
     return 'ranked $rank: the slider favours songs liked most';
   }
+
+  @override
+  String get songInfo => 'Song info';
+
+  @override
+  String get songInfoListening => 'Your listening (all devices)';
+
+  @override
+  String get songInfoPlays => 'Plays';
+
+  @override
+  String get songInfoLastPlayed => 'Last played';
+
+  @override
+  String get songInfoNever => 'never';
+
+  @override
+  String get songInfoFinished => 'Finished';
+
+  @override
+  String get songInfoSkipped => 'Skipped';
+
+  @override
+  String get songInfoFavourite => 'Favourite';
+
+  @override
+  String get songInfoYes => 'yes';
+
+  @override
+  String get songInfoNo => 'no';
+
+  @override
+  String get songInfoRating => 'Rating';
+
+  @override
+  String get songInfoNoRating => 'none';
+
+  @override
+  String get songInfoAdded => 'Added';
+
+  @override
+  String get songInfoThisDevice => 'On this device';
+
+  @override
+  String get songInfoLastHeardHere => 'Last heard here';
+
+  @override
+  String get songInfoNotThisWeek => 'not in the last week';
+
+  @override
+  String get songInfoWhy => 'Why it is queued';
+
+  @override
+  String get songInfoFile => 'File';
+
+  @override
+  String get songInfoFormat => 'Format';
+
+  @override
+  String get songInfoLength => 'Length';
+
+  @override
+  String get songInfoSize => 'Size';
+
+  @override
+  String get songInfoYear => 'Year';
+
+  @override
+  String get songInfoGenre => 'Genre';
+
+  @override
+  String get songInfoOffline =>
+      'Couldn\'t reach the server; the counts shown may be out of date.';
 }

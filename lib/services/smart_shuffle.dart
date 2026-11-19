@@ -96,6 +96,7 @@ class SmartShuffle {
       drawn.add((
         song,
         ShufflePick(
+          plays: song.playCount ?? 0,
           completes: o.completes,
           skips: o.skips,
           starred: song.starred == true,

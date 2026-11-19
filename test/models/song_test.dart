@@ -141,4 +141,13 @@ void main() {
       }
     });
   });
+
+  // RD: the server's play date is not read, so the song info shows every song as never played.
+  test('reads when the song was last played', () {
+    final song = Song.fromJson(
+        {'id': 's1', 'title': 'T', 'played': '2026-11-18T10:30:00Z'});
+
+    expect(song.played, DateTime.utc(2026, 11, 18, 10, 30));
+    expect(Song.fromJson({'id': 's2', 'title': 'T'}).played, isNull);
+  });
 }

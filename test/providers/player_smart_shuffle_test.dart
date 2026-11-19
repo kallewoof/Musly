@@ -285,7 +285,7 @@ void main() {
     expect(player.queue.first, playing);
     final upcoming = [
       for (final s in player.queue.skip(1))
-        player.debugPickReasonOf(s.id) as ShufflePick
+        player.pickReasonOf(s.id) as ShufflePick
     ];
     expect(upcoming, isNotEmpty);
     expect(upcoming.every((r) => r.taste == 0), isTrue);

@@ -140,6 +140,8 @@ void main() {
 
       expect(find.byType(SongOptionsModal), findsOneWidget);
       expect(find.text('Add to Playlist'), findsOneWidget);
+      // RD: the song menu has no way to the song's numbers, so on the desktop they cannot be seen.
+      expect(find.byKey(const ValueKey('song-info-entry')), findsOneWidget);
 
       Navigator.pop(tester.element(find.byType(SongOptionsModal)));
       await tester.pumpAndSettle();

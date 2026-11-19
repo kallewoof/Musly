@@ -66,6 +66,7 @@ List<String> pickReasonLines(PickReason reason, AppLocalizations l10n) {
       return [l10n.pickReasonListenAgain];
     case ShufflePick():
       return [
+        if (reason.plays case final plays?) l10n.pickReasonShufflePlays(plays),
         l10n.pickReasonShuffleListens(reason.completes, reason.skips),
         if (reason.starred)
           l10n.pickReasonShuffleStar(SmartShuffle.starWeight.round()),

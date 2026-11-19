@@ -115,8 +115,8 @@ class PlayerProvider extends ChangeNotifier
   /// Why the songs of the current queue are in it, by song id, for the queues an algorithm picked.
   Map<String, PickReason> _pickReasons = {};
 
-  @visibleForTesting
-  PickReason? debugPickReasonOf(String songId) => _pickReasons[songId];
+  /// Why [songId] is in the current queue, if an algorithm picked it.
+  PickReason? pickReasonOf(String songId) => _pickReasons[songId];
 
   PickReason? get currentPickReason =>
       _currentSong == null ? null : _pickReasons[_currentSong!.id];

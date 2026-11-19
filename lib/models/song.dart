@@ -26,6 +26,9 @@ class Song {
   final double? replayGainAlbumPeak;
   final List<ArtistRef>? artistParticipants;
   final DateTime? created;
+
+  /// When the user last played it, on any device (the server's play date); null if never.
+  final DateTime? played;
   final bool? hasDolbyAtmos;
 
   /// The user's listens as the server counts them, across all their devices: plays, and with the
@@ -71,6 +74,7 @@ class Song {
     this.replayGainAlbumPeak,
     this.artistParticipants,
     this.created,
+    this.played,
     this.hasDolbyAtmos,
     this.playCount,
     this.skipCount,
@@ -137,6 +141,9 @@ class Song {
       created: json['created'] != null
           ? DateTime.tryParse(json['created'].toString())
           : null,
+      played: json['played'] != null
+          ? DateTime.tryParse(json['played'].toString())
+          : null,
       hasDolbyAtmos: json['hasDolbyAtmos'] as bool?,
     );
   }
@@ -170,6 +177,7 @@ class Song {
         'artists':
             artistParticipants!.map((artist) => artist.toJson()).toList(),
       'created': created?.toIso8601String(),
+      if (played != null) 'played': played!.toIso8601String(),
       if (hasDolbyAtmos != null) 'hasDolbyAtmos': hasDolbyAtmos,
       // fromJson reads the server's starred timestamp as presence, so any value reads back as starred.
       if (starred == true) 'starred': true,
@@ -212,6 +220,7 @@ class Song {
     double? replayGainAlbumPeak,
     List<ArtistRef>? artistParticipants,
     DateTime? created,
+    DateTime? played,
     bool? hasDolbyAtmos,
     int? playCount,
     int? skipCount,
@@ -243,6 +252,7 @@ class Song {
       replayGainAlbumPeak: replayGainAlbumPeak ?? this.replayGainAlbumPeak,
       artistParticipants: artistParticipants ?? this.artistParticipants,
       created: created ?? this.created,
+      played: played ?? this.played,
       hasDolbyAtmos: hasDolbyAtmos ?? this.hasDolbyAtmos,
       playCount: playCount ?? this.playCount,
       skipCount: skipCount ?? this.skipCount,

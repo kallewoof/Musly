@@ -3943,6 +3943,15 @@
   "@pickReasonListenAgain": {
     "description": "Why a song is in Listen Again"
   },
+  "pickReasonShufflePlays": "played {plays}× (all devices)",
+  "@pickReasonShufflePlays": {
+    "description": "Smart Shuffle evidence: plays counted on the server",
+    "placeholders": {
+      "plays": {
+        "type": "int"
+      }
+    }
+  },
   "pickReasonShuffleListens": "finished {completes}×, skipped {skips}×",
   "@pickReasonShuffleListens": {
     "description": "Smart Shuffle evidence: completions and skips",
@@ -4128,5 +4137,101 @@
         "type": "String"
       }
     }
+  },
+  "songInfo": "Song info",
+  "@songInfo": {
+    "description": "Song menu entry opening the song info sheet"
+  },
+  "songInfoListening": "Your listening (all devices)",
+  "@songInfoListening": {
+    "description": "Song info: the server's counts for the user"
+  },
+  "songInfoPlays": "Plays",
+  "@songInfoPlays": {
+    "description": "Song info: play count"
+  },
+  "songInfoLastPlayed": "Last played",
+  "@songInfoLastPlayed": {
+    "description": "Song info: when it was last played"
+  },
+  "songInfoNever": "never",
+  "@songInfoNever": {
+    "description": "Song info: a date that has not happened"
+  },
+  "songInfoFinished": "Finished",
+  "@songInfoFinished": {
+    "description": "Song info: listens heard to 90% or more"
+  },
+  "songInfoSkipped": "Skipped",
+  "@songInfoSkipped": {
+    "description": "Song info: listens stopped early"
+  },
+  "songInfoFavourite": "Favourite",
+  "@songInfoFavourite": {
+    "description": "Song info: starred or not"
+  },
+  "songInfoYes": "yes",
+  "@songInfoYes": {
+    "description": "Song info: yes"
+  },
+  "songInfoNo": "no",
+  "@songInfoNo": {
+    "description": "Song info: no"
+  },
+  "songInfoRating": "Rating",
+  "@songInfoRating": {
+    "description": "Song info: the user's rating"
+  },
+  "songInfoNoRating": "none",
+  "@songInfoNoRating": {
+    "description": "Song info: not rated"
+  },
+  "songInfoAdded": "Added",
+  "@songInfoAdded": {
+    "description": "Song info: when it was added to the library"
+  },
+  "songInfoThisDevice": "On this device",
+  "@songInfoThisDevice": {
+    "description": "Song info: what this device recorded"
+  },
+  "songInfoLastHeardHere": "Last heard here",
+  "@songInfoLastHeardHere": {
+    "description": "Song info: when this device last played or skipped it"
+  },
+  "songInfoNotThisWeek": "not in the last week",
+  "@songInfoNotThisWeek": {
+    "description": "Song info: not heard here within the week this device keeps"
+  },
+  "songInfoWhy": "Why it is queued",
+  "@songInfoWhy": {
+    "description": "Song info: why an algorithm picked it"
+  },
+  "songInfoFile": "File",
+  "@songInfoFile": {
+    "description": "Song info: the audio file"
+  },
+  "songInfoFormat": "Format",
+  "@songInfoFormat": {
+    "description": "Song info: file format and bitrate"
+  },
+  "songInfoLength": "Length",
+  "@songInfoLength": {
+    "description": "Song info: duration"
+  },
+  "songInfoSize": "Size",
+  "@songInfoSize": {
+    "description": "Song info: file size"
+  },
+  "songInfoYear": "Year",
+  "@songInfoYear": {
+    "description": "Song info: release year"
+  },
+  "songInfoGenre": "Genre",
+  "@songInfoGenre": {
+    "description": "Song info: genre"
+  },
+  "songInfoOffline": "Couldn't reach the server; the counts shown may be out of date.",
+  "@songInfoOffline": {
+    "description": "Song info: the fresh counts could not be loaded"
   }
 }

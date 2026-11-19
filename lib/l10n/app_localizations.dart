@@ -5938,6 +5938,12 @@ abstract class AppLocalizations {
   /// **'you played it recently'**
   String get pickReasonListenAgain;
 
+  /// Smart Shuffle evidence: plays counted on the server
+  ///
+  /// In en, this message translates to:
+  /// **'played {plays}× (all devices)'**
+  String pickReasonShufflePlays(int plays);
+
   /// Smart Shuffle evidence: completions and skips
   ///
   /// In en, this message translates to:
@@ -6105,6 +6111,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ranked {rank}: the slider favours songs liked most'**
   String pickReasonShuffleTowardFavourites(String rank);
+
+  /// Song menu entry opening the song info sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Song info'**
+  String get songInfo;
+
+  /// Song info: the server's counts for the user
+  ///
+  /// In en, this message translates to:
+  /// **'Your listening (all devices)'**
+  String get songInfoListening;
+
+  /// Song info: play count
+  ///
+  /// In en, this message translates to:
+  /// **'Plays'**
+  String get songInfoPlays;
+
+  /// Song info: when it was last played
+  ///
+  /// In en, this message translates to:
+  /// **'Last played'**
+  String get songInfoLastPlayed;
+
+  /// Song info: a date that has not happened
+  ///
+  /// In en, this message translates to:
+  /// **'never'**
+  String get songInfoNever;
+
+  /// Song info: listens heard to 90% or more
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get songInfoFinished;
+
+  /// Song info: listens stopped early
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get songInfoSkipped;
+
+  /// Song info: starred or not
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite'**
+  String get songInfoFavourite;
+
+  /// Song info: yes
+  ///
+  /// In en, this message translates to:
+  /// **'yes'**
+  String get songInfoYes;
+
+  /// Song info: no
+  ///
+  /// In en, this message translates to:
+  /// **'no'**
+  String get songInfoNo;
+
+  /// Song info: the user's rating
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get songInfoRating;
+
+  /// Song info: not rated
+  ///
+  /// In en, this message translates to:
+  /// **'none'**
+  String get songInfoNoRating;
+
+  /// Song info: when it was added to the library
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get songInfoAdded;
+
+  /// Song info: what this device recorded
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get songInfoThisDevice;
+
+  /// Song info: when this device last played or skipped it
+  ///
+  /// In en, this message translates to:
+  /// **'Last heard here'**
+  String get songInfoLastHeardHere;
+
+  /// Song info: not heard here within the week this device keeps
+  ///
+  /// In en, this message translates to:
+  /// **'not in the last week'**
+  String get songInfoNotThisWeek;
+
+  /// Song info: why an algorithm picked it
+  ///
+  /// In en, this message translates to:
+  /// **'Why it is queued'**
+  String get songInfoWhy;
+
+  /// Song info: the audio file
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get songInfoFile;
+
+  /// Song info: file format and bitrate
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get songInfoFormat;
+
+  /// Song info: duration
+  ///
+  /// In en, this message translates to:
+  /// **'Length'**
+  String get songInfoLength;
+
+  /// Song info: file size
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get songInfoSize;
+
+  /// Song info: release year
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get songInfoYear;
+
+  /// Song info: genre
+  ///
+  /// In en, this message translates to:
+  /// **'Genre'**
+  String get songInfoGenre;
+
+  /// Song info: the fresh counts could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the server; the counts shown may be out of date.'**
+  String get songInfoOffline;
 }
 
 class _AppLocalizationsDelegate

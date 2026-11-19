@@ -16,6 +16,7 @@ sealed class PickReason {
         ListenAgainPick() => {'kind': 'listenAgain'},
         ShufflePick p => {
             'kind': 'shuffle',
+            if (p.plays != null) 'plays': p.plays,
             'completes': p.completes,
             'skips': p.skips,
             'starred': p.starred,
@@ -47,6 +48,7 @@ sealed class PickReason {
       'topHit' => TopHitPick(j['plays'] as int),
       'listenAgain' => const ListenAgainPick(),
       'shuffle' => ShufflePick(
+          plays: j['plays'] as int?,
           completes: j['completes'] as int,
           skips: j['skips'] as int,
           starred: j['starred'] as bool,
@@ -132,10 +134,14 @@ class ShufflePick extends PickReason {
     required this.artistMean,
     required this.draw,
     required this.typical,
+    this.plays,
     this.taste = 0.5,
     double? rank,
   }) : rank = rank ?? draw;
 
+  /// Plays counted on the server, which the slider's left end goes by along with [completes] and [skips];
+  /// null for a pick saved without it.
+  final int? plays;
   final int completes;
   final int skips;
   final bool starred;

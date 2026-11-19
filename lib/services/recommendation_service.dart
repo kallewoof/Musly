@@ -84,6 +84,25 @@ class RecommendationService extends ChangeNotifier {
   Map<String, SongProfile> get profiles => Map.unmodifiable(_profiles);
   List<String> get recentlyPlayed => List.unmodifiable(_recentlyPlayed);
 
+  /// What this device has recorded of the song: listens finished and skipped since the counts were last reset,
+  /// and when it was last heard here (within [heardCooldown], the span the heard list keeps).
+  ({int finished, int skipped, DateTime? lastHeard}) onThisDevice(
+      String songId) {
+    final p = _profiles[songId];
+    DateTime? last;
+    for (final h in _heard) {
+      if (h.id == songId) {
+        last = h.at;
+        break;
+      }
+    }
+    return (
+      finished: p?.completedPlays ?? 0,
+      skipped: _skipCounts[songId] ?? 0,
+      lastHeard: last
+    );
+  }
+
   /// Songs played or skipped within [heardCooldown], which Smart Shuffle leaves out: those heard here, and
   /// [elsewhere], what the server says was heard on any device. Newest first, so a caller short of songs can
   /// let the oldest back.

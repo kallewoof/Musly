@@ -33,8 +33,9 @@ void main() {
         draw: 0.71,
         typical: 0.55,
         taste: 0.2,
-        rank: 2.71)) as ShufflePick;
-    expect((shuffle.taste, shuffle.rank), (0.2, 2.71));
+        rank: 2.71,
+        plays: 4)) as ShufflePick;
+    expect((shuffle.taste, shuffle.rank, shuffle.plays), (0.2, 2.71, 4));
     expect((
       shuffle.completes,
       shuffle.skips,
