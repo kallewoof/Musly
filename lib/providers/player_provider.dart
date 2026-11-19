@@ -128,15 +128,22 @@ class PlayerProvider extends ChangeNotifier
 
   DateTime? _songPlaybackStartTime;
   Duration _songAccumulatedPlayTime = Duration.zero;
-  String? _scrobbleTrackedSongId;
 
-  bool _canScrobble(Song song) {
-    if (_scrobbleTrackedSongId != song.id) return false;
-    final played = _songAccumulatedPlayTime +
-        ((_songPlaybackStartTime != null && _isPlaying)
-            ? DateTime.now().difference(_songPlaybackStartTime!)
-            : Duration.zero);
-    final duration = _duration > Duration.zero
+  /// The song whose listen is being timed, and whether that listen was sent as a play: once per listen,
+  /// whichever way the song is left (it ends, Next, a pick from the queue, a new queue, a stuck song passed
+  /// over), since only some of those paths retire the track.
+  Song? _trackedSong;
+  bool _trackedScrobbled = false;
+
+  Duration get _trackedHeard =>
+      _songAccumulatedPlayTime +
+      ((_songPlaybackStartTime != null && _isPlaying)
+          ? DateTime.now().difference(_songPlaybackStartTime!)
+          : Duration.zero);
+
+  bool _heardEnough(Song song) {
+    final played = _trackedHeard;
+    final duration = _currentSong?.id == song.id && _duration > Duration.zero
         ? _duration
         : (song.duration != null
             ? Duration(seconds: song.duration!)
@@ -144,6 +151,21 @@ class PlayerProvider extends ChangeNotifier
     if (duration <= Duration.zero) return played.inSeconds >= 30;
     return played.inSeconds >= 240 ||
         played.inMilliseconds >= duration.inMilliseconds ~/ 2;
+  }
+
+  /// Sends the tracked listen as a play if it was heard long enough and is not sent yet.
+  void _scrobbleTrackedListen() {
+    final song = _trackedSong;
+    if (song == null || song.isLocal == true || _trackedScrobbled) return;
+    if (!_heardEnough(song)) {
+      debugPrint(
+          '[Player] Skipped scrobble for "${song.title}" (not played long enough)');
+      return;
+    }
+    _trackedScrobbled = true;
+    _subsonicService.scrobble(song.id, submission: true).catchError((e) {
+      _offlineService.queueScrobble(song.id, submission: true);
+    });
   }
 
   /// The song tracking last moved away from: how long it was heard, and whether leaving it says nothing about
@@ -157,21 +179,20 @@ class PlayerProvider extends ChangeNotifier
   bool _leavingUnjudged = false;
 
   void _resetScrobbleTracking(Song song) {
-    final left = _scrobbleTrackedSongId;
-    if (left != null && left != song.id) {
+    final left = _trackedSong;
+    if (left != null && left.id != song.id) {
+      _scrobbleTrackedListen();
       _lastLeft = (
-        id: left,
-        heard: _songAccumulatedPlayTime +
-            ((_songPlaybackStartTime != null && _isPlaying)
-                ? DateTime.now().difference(_songPlaybackStartTime!)
-                : Duration.zero),
+        id: left.id,
+        heard: _trackedHeard,
         unjudged: _leavingUnjudged,
       );
     }
     _leavingUnjudged = false;
     _songPlaybackStartTime = DateTime.now();
     _songAccumulatedPlayTime = Duration.zero;
-    _scrobbleTrackedSongId = song.id;
+    _trackedSong = song;
+    _trackedScrobbled = false;
   }
 
   SharedPreferences? _prefs;
@@ -3149,21 +3170,8 @@ class PlayerProvider extends ChangeNotifier
   /// DLNA session scrobbled only its very first track.
   @visibleForTesting
   void retireCurrentTrack() {
-    final outgoing = _currentSong;
-    if (outgoing == null) return;
-
-    if (outgoing.isLocal != true) {
-      if (_canScrobble(outgoing)) {
-        _subsonicService.scrobble(outgoing.id, submission: true).catchError(
-          (e) {
-            _offlineService.queueScrobble(outgoing.id, submission: true);
-          },
-        );
-      } else {
-        debugPrint('[Player] Skipped scrobble for "${outgoing.title}" '
-            '(not played long enough)');
-      }
-    }
+    if (_trackedSong?.id != _currentSong?.id) return;
+    _scrobbleTrackedListen();
   }
 
   /// Adopt [newIndex] as the current track and run every side effect a track

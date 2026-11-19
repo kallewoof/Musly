@@ -5,6 +5,9 @@ import 'dart:io';
 class FakeQueueServer {
   late HttpServer _server;
   final saves = <Map<String, List<String>>>[];
+
+  /// Each scrobble request's parameters, in order.
+  final scrobbles = <Map<String, List<String>>>[];
   bool failSaves = false;
 
   /// Off for a server without the OpenSubsonic index-based queue (gonic, older Navidrome).
@@ -80,6 +83,7 @@ class FakeQueueServer {
     add(req.uri.query);
     add(body);
     lastParams[req.uri.pathSegments.last] = params;
+    if (req.uri.path.endsWith('/scrobble')) scrobbles.add(params);
     Map<String, dynamic> response = {'status': 'ok'};
     if (req.uri.path.endsWith('/savePlayQueueByIndex')) {
       if (failSaves) {

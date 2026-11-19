@@ -197,4 +197,72 @@ void main() {
     expect(picks, isNotEmpty);
     expect(picks, isNot(contains('s2')));
   });
+
+  /// The ids sent to the server as plays (scrobble submissions).
+  List<String> plays() => [
+        for (final s in server.scrobbles)
+          if (s['submission']?.single == 'true') s['id']!.single,
+      ];
+
+  /// Two short songs, the first playing past its scrobble point (half of its 2 s).
+  Future<List<Song>> heardFirstOfTwo() async {
+    final short = [
+      Song(id: 'x0', title: 'X0', duration: 2),
+      Song(id: 'x1', title: 'X1', duration: 2),
+    ];
+    await run(() => player.playSong(short[0], playlist: short, startIndex: 0));
+    player.debugSetPlaying(true);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    return short;
+  }
+
+  // RD: only the gapless index change and a natural end send the play, so a song heard through and left by
+  // another path (a new queue, a pick, a stuck song passed over) is never counted as played, and is missing
+  // from what other devices count as heard this week.
+  test(
+      'a song heard past its scrobble point counts as played, however it is left',
+      () async {
+    final short = await heardFirstOfTwo();
+
+    await run(() => player.playSong(short[1], playlist: short, startIndex: 1));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(plays(), ['x0']);
+    expect(player.lastLeft?.heard,
+        greaterThanOrEqualTo(const Duration(milliseconds: 1000)),
+        reason: 'the playback reporter judges the listen by this');
+
+    // The next song's listen is a play of its own.
+    player.debugSetPlaying(true);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    await run(() => player.playSong(short[0], playlist: short, startIndex: 0));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(plays(), ['x0', 'x1']);
+  });
+
+  // RD: the play is sent from every path that leaves the song, so one listen counts as two plays.
+  test('a listen is sent as a play once, whichever paths retire it', () async {
+    final short = await heardFirstOfTwo();
+
+    player.retireCurrentTrack();
+    await run(() => player.playSong(short[1], playlist: short, startIndex: 1));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(plays(), ['x0']);
+  });
+
+  // RD: leaving a song counts it as played whatever was heard, so skipped songs gain plays.
+  test('a song left before its scrobble point is not a play', () async {
+    final short = [
+      Song(id: 'x0', title: 'X0', duration: 200),
+      Song(id: 'x1', title: 'X1', duration: 200),
+    ];
+    await run(() => player.playSong(short[0], playlist: short, startIndex: 0));
+    player.debugSetPlaying(true);
+
+    await run(() => player.playSong(short[1], playlist: short, startIndex: 1));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(plays(), isEmpty);
+  });
 }
