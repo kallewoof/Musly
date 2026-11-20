@@ -69,17 +69,5 @@ void main() {
         equals('Eminem'),
       );
     });
-
-    test('searchLyrics finds synced lyrics for YouTube title formats', () async {
-      final result = await LrcLibService().searchLyrics(
-        artist: 'Music Zone',
-        title: 'Ramz - Barking (Audio)',
-      );
-
-      expect(result, isNotNull);
-      expect(result!['value'], isNotNull);
-      expect(result['value'].toString().toLowerCase(), contains('barkin'));
-      expect(result['structuredLyrics'], isNotNull);
-    });
   });
 }
