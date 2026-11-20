@@ -54,7 +54,8 @@ class PlaybackReporter {
 
   /// The song is being replaced. Left with Back, past a song that never started, or while paused, it gets no
   /// verdict: going back is to hear an earlier song again, a song that never played was not heard, and a paused
-  /// song was replaced by an adopted or restored queue, or already abandoned.
+  /// song was replaced by an adopted or restored queue, or already abandoned. Nor does a song heard [justHeard]
+  /// before get a skip.
   /// A finished listen (_verdict) was heard, however it ended. How long it was heard comes from the player, which counts it by
   /// the clock; the position seen here can be stale, as position changes do not notify listeners.
   void _leave() {
@@ -66,9 +67,17 @@ class PlaybackReporter {
     final heard = fromPlayer ? handed.heard : _position;
     final verdict = _verdict(left.duration ?? 0, heard);
     if (!_playing && verdict != _Verdict.finished) return;
+    if (verdict == _Verdict.skipped && _heardJustBefore(left)) return;
     _judge(left, heard, verdict);
     _send(left, 'stopped', heard);
   }
+
+  /// A song heard (played or skipped) this short while before was played again on purpose, to hear it again
+  /// or to act on it (a star, a rating); leaving it early then says nothing against it.
+  static const justHeard = Duration(minutes: 15);
+
+  bool _heardJustBefore(Song song) =>
+      _recommendations?.heardWithin(song.id, justHeard) ?? false;
 
   /// The verdict the server draws from the stop: a skip before the scrobble point (half the song, at most four
   /// minutes); a finish from 90% of the song or its last 30 seconds, whichever comes first; between them, or for

@@ -50,6 +50,12 @@ class _Player extends PlayerProvider {
 class _Taste extends RecommendationService {
   final verdicts = <String>[];
 
+  /// The songs this device heard a moment ago.
+  final justHeard = <String>{};
+
+  @override
+  bool heardWithin(String songId, Duration span) => justHeard.contains(songId);
+
   @override
   Future<void> trackSkip(Song song, {int secondsPlayed = 0}) async =>
       verdicts.add('skip ${song.id} $secondsPlayed');
@@ -235,5 +241,24 @@ void main() {
     await settled();
 
     expect(taste.verdicts, isEmpty);
+  });
+
+  // RD: going back to a song just heard to star it (or hear it again) and moving on counts a skip against it, on
+  // the server and here; or the rule swallows a finish too.
+  test('a song heard a moment ago gets no skip, but still its finish',
+      () async {
+    taste.justHeard.add('b');
+    player.show(song: a, playing: true, seconds: 0);
+    leave(a, b, heard: 150);
+    leave(b, a, heard: 3); // 180 s: a skip, but b was just heard
+    await settled();
+
+    expect(taste.verdicts, ['partial a 150']);
+    expect(server.reports.where((r) => r.startsWith('stopped b')), isEmpty);
+
+    player.show(song: b, playing: true);
+    leave(b, a, heard: 170); // finished: counts
+    await settled();
+    expect(taste.verdicts.last, 'finished b 170');
   });
 }

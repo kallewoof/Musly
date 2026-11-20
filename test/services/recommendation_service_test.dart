@@ -275,6 +275,21 @@ void main() {
     expect(heard, ['here', 'phone']);
   });
 
+  // RD: the "just heard" window is measured from the wrong listen or never closes, so a song heard yesterday
+  // still cannot gain a skip; or a song heard a minute ago can.
+  test('says whether a song was heard within a span of now', () async {
+    var now = DateTime(2026, 11, 20, 16);
+    model.clock = () => now;
+    await model.trackSongPlay(Song(id: 'h', title: 'T'),
+        durationPlayed: 200, completed: true);
+
+    now = now.add(const Duration(minutes: 14));
+    expect(model.heardWithin('h', const Duration(minutes: 15)), isTrue);
+    expect(model.heardWithin('other', const Duration(minutes: 15)), isFalse);
+    now = now.add(const Duration(minutes: 2));
+    expect(model.heardWithin('h', const Duration(minutes: 15)), isFalse);
+  });
+
   // RD: the heard list is not saved, so after a restart the songs skipped before it come straight back.
   test('keeps the heard songs across a restart', () async {
     await model.trackSkip(Song(id: 'k1', title: 'T'));

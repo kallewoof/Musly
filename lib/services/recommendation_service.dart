@@ -89,18 +89,25 @@ class RecommendationService extends ChangeNotifier {
   ({int finished, int skipped, DateTime? lastHeard}) onThisDevice(
       String songId) {
     final p = _profiles[songId];
-    DateTime? last;
-    for (final h in _heard) {
-      if (h.id == songId) {
-        last = h.at;
-        break;
-      }
-    }
     return (
       finished: p?.completedPlays ?? 0,
       skipped: _skipCounts[songId] ?? 0,
-      lastHeard: last
+      lastHeard: lastHeard(songId)
     );
+  }
+
+  /// When this device last heard the song, played or skipped, within [heardCooldown].
+  DateTime? lastHeard(String songId) {
+    for (final h in _heard) {
+      if (h.id == songId) return h.at;
+    }
+    return null;
+  }
+
+  /// Whether this device heard the song, played or skipped, within [span] of now.
+  bool heardWithin(String songId, Duration span) {
+    final last = lastHeard(songId);
+    return last != null && clock().difference(last) < span;
   }
 
   /// Songs played or skipped within [heardCooldown], which Smart Shuffle leaves out: those heard here, and
