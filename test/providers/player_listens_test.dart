@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +31,7 @@ void main() {
   initializeTestEnvironment();
 
   late FakeQueueServer server;
+  late SubsonicService service;
   late PlayerProvider player;
   late List<Song> songs;
 
@@ -38,7 +40,7 @@ void main() {
     await server.start();
     SharedPreferences.setMockInitialValues({});
     await StorageService().init();
-    final service = SubsonicService();
+    service = SubsonicService();
     await service.configure(ServerConfig(
         serverUrl: 'http://127.0.0.1:${server.port}',
         username: 'u',
@@ -260,6 +262,76 @@ void main() {
     await run(() => player.playSong(short[0], playlist: short, startIndex: 0));
     player.debugSetPlaying(true);
 
+    await run(() => player.playSong(short[1], playlist: short, startIndex: 1));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(plays(), isEmpty);
+  });
+
+  // RD: the song change records the leave only after it awaits, and the desktop's position ticks notify the
+  // playback reporter meanwhile: it sees the new song with the old leave unrecorded, so a song left with Back
+  // is judged by a stale position and counted as a skip.
+  test('a song change records the leave before it awaits anything', () async {
+    await run(() => player.playSong(songs[2],
+        playlist: songs.take(5).toList(), startIndex: 2));
+    player.debugSetPlaying(true);
+
+    // The gapless player moving to the song before, as Back makes it do. Not awaited: this is what a
+    // listener notified while the change waits would see.
+    runZonedGuarded(() => unawaited(player.adoptTrackAt(1)), (_, __) {});
+
+    expect(player.currentSong?.id, 's1');
+    expect(player.lastLeft?.id, 's2');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  });
+
+  final short = [
+    Song(id: 'x0', title: 'X0', duration: 2),
+    Song(id: 'x1', title: 'X1', duration: 2),
+  ];
+
+  /// Musly started again with [short] saved as its queue, on x0, then left idle for longer than x0's
+  /// scrobble point (1 s).
+  Future<void> launchRestoredThenIdle() async {
+    player.dispose();
+    SharedPreferences.setMockInitialValues({
+      'persistent_queue': jsonEncode([for (final s in short) s.toJson()]),
+      'persistent_queue_index': 0,
+      'persistent_queue_song_id': 'x0',
+      'persistent_queue_position_ms': 0,
+    });
+    player = PlayerProvider(
+        service,
+        StorageService(),
+        FakeCastService(),
+        UpnpService(),
+        MuslyAudioHandler(),
+        JukeboxService(),
+        TranscodingService());
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    expect(player.currentSong?.id, 'x0');
+  }
+
+  // RD: a song restored at launch is never timed, so playing it through counts a finish but no play.
+  test('a song restored at launch is a play once heard past its scrobble point',
+      () async {
+    await launchRestoredThenIdle();
+
+    await run(() => player.play(adoptRemote: false));
+    player.debugSetPlaying(true);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    await run(() => player.playSong(short[1], playlist: short, startIndex: 1));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(plays(), ['x0']);
+  });
+
+  // RD: a restored song is timed from launch, so the time the app sat idle before play counts as listening.
+  test('a restored song is timed from when it plays, not from launch',
+      () async {
+    await launchRestoredThenIdle();
+
+    await run(() => player.play(adoptRemote: false));
     await run(() => player.playSong(short[1], playlist: short, startIndex: 1));
     await Future<void>.delayed(const Duration(milliseconds: 200));
 

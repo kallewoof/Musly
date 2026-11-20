@@ -2128,6 +2128,11 @@ class PlayerProvider extends ChangeNotifier
   /// user just picked.
   Future<void> play({bool adoptRemote = true}) async {
     if (adoptRemote && !_isPlaying) await adoptRemoteQueue();
+    // A song restored at launch is timed from when it first plays, so the listen is counted (and the time
+    // the app sat idle before is not).
+    if (_currentSong case final song? when _trackedSong?.id != song.id) {
+      _resetScrobbleTracking(song);
+    }
     _isManuallyPaused = false;
     _wasPlayingBeforeInterruption = false;
 
@@ -3190,6 +3195,9 @@ class PlayerProvider extends ChangeNotifier
     _isCrossfadingOut = false;
     _currentIndex = newIndex;
     _currentSong = _queue[_currentIndex];
+    // With the new song, before any await: listeners notified meanwhile (the position ticks) would otherwise
+    // see the new song with the old song's leave unrecorded, and judge it by a stale position.
+    _resetScrobbleTracking(_currentSong!);
     _lastPreloadedSongId = null;
     _position = Duration.zero;
     if (_currentSong?.duration != null) {
@@ -3203,7 +3211,6 @@ class PlayerProvider extends ChangeNotifier
       await _applyReplayGain(_currentSong);
     }
 
-    _resetScrobbleTracking(_currentSong!);
     notifyListeners();
     _saveQueueState();
 
