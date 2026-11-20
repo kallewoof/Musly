@@ -216,8 +216,13 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
     }
   }
 
+  /// The playing song takes a normalization change at once, not from the next song.
+  void _refreshPlayingSong() =>
+      Provider.of<PlayerProvider>(context, listen: false).refreshReplayGain();
+
   void _setReplayGainMode(ReplayGainMode mode) async {
     await _replayGainService.setMode(mode);
+    _refreshPlayingSong();
     setState(() => _replayGainMode = mode);
   }
 
@@ -234,6 +239,7 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
         activeColor: Theme.of(context).colorScheme.primary,
         onChanged: (value) async {
           await _replayGainService.setPreampGain(value);
+          _refreshPlayingSong();
           setState(() => _replayGainPreamp = value);
         },
       ),
@@ -246,6 +252,7 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
       value: _replayGainPreventClipping,
       onChanged: (value) async {
         await _replayGainService.setPreventClipping(value);
+        _refreshPlayingSong();
         setState(() => _replayGainPreventClipping = value);
       },
     );
@@ -266,6 +273,7 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
         activeColor: Theme.of(context).colorScheme.primary,
         onChanged: (value) async {
           await _replayGainService.setFallbackGain(value);
+          _refreshPlayingSong();
           setState(() => _replayGainFallback = value);
         },
       ),

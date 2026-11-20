@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' show Random, max;
+import 'dart:math' show Random, max, pow;
 import 'dart:ui' show AppExitResponse;
 
 import 'package:audio_session/audio_session.dart';
@@ -3225,6 +3225,13 @@ class PlayerProvider extends ChangeNotifier
     _updateAndroidAuto();
   }
 
+  /// The Linux audio backend (just_audio_media_kit, playing through mpv) applies its volume cubically, a
+  /// loudness curve for the slider. A ReplayGain factor handed to it as is would come out cubed: -6 dB as -18.
+  @visibleForTesting
+  static bool volumeIsCubic = !kIsWeb && Platform.isLinux;
+
+  /// The player volume for [song]: the slider, and the ReplayGain factor so that it comes out as the gain asked
+  /// for (on a cubic backend, its cube root).
   double getEffectiveVolumeForSong(Song? song) {
     final replayGainMultiplier = _replayGainService.calculateVolumeMultiplier(
       trackGain: song?.replayGainTrackGain,
@@ -3232,7 +3239,10 @@ class PlayerProvider extends ChangeNotifier
       trackPeak: song?.replayGainTrackPeak,
       albumPeak: song?.replayGainAlbumPeak,
     );
-    return (_volume * replayGainMultiplier).clamp(0.0, 1.0);
+    final factor = volumeIsCubic
+        ? pow(replayGainMultiplier, 1 / 3).toDouble()
+        : replayGainMultiplier;
+    return (_volume * factor).clamp(0.0, 1.0);
   }
 
   Future<void> _applyReplayGain(Song? song) async {
