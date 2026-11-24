@@ -200,6 +200,29 @@ void main() {
       expect(player.queue, [same(fixed[0]), same(fixed[1]), same(fixed[2])]);
     });
 
+    // RD: only the shown tags are compared, so a song that gained ReplayGain values on the server keeps playing
+    // in the queue with none, at the flat fallback gain, until it is queued again.
+    test('takes new ReplayGain values for the songs it holds', () async {
+      final q = [
+        Song(id: 'a', title: 'Track 1'),
+        Song(id: 'b', title: 'Track 2', replayGainTrackGain: -3),
+      ];
+      await queue(q, 0);
+      final fixed = [
+        Song(id: 'a', title: 'Track 1', replayGainTrackGain: -7.2),
+        Song(
+            id: 'b',
+            title: 'Track 2',
+            replayGainTrackGain: -3,
+            replayGainTrackPeak: 0.9),
+      ];
+
+      player.takeLibraryTags(fixed);
+
+      expect(player.queue, [same(fixed[0]), same(fixed[1])]);
+      expect(player.currentSong?.replayGainTrackGain, -7.2);
+    });
+
     // RD: copies the library does not know (or local files, which have no server copy) are replaced or dropped,
     // so a queue of local files loses its songs when the library loads.
     test('leaves songs the library does not hold, and local files', () async {

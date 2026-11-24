@@ -3371,7 +3371,11 @@ class PlayerProvider extends ChangeNotifier
       a.genre == b.genre &&
       a.year == b.year &&
       a.track == b.track &&
-      a.coverArt == b.coverArt;
+      a.coverArt == b.coverArt &&
+      a.replayGainTrackGain == b.replayGainTrackGain &&
+      a.replayGainAlbumGain == b.replayGainAlbumGain &&
+      a.replayGainTrackPeak == b.replayGainTrackPeak &&
+      a.replayGainAlbumPeak == b.replayGainAlbumPeak;
 
   void _replaceSongs(Map<String, Song> songs) {
     final current = songs[_currentSong?.id];
@@ -3390,6 +3394,7 @@ class PlayerProvider extends ChangeNotifier
     if (current != null) {
       _updateAndroidAuto();
       _updateAllServices();
+      unawaited(_applyReplayGain(current));
     }
   }
 
