@@ -273,7 +273,7 @@ class PlayerProvider extends ChangeNotifier
       } catch (_) {}
     }
 
-    _restoreQueueState();
+    _restored = _restoreQueueState();
 
     // The local save also bounds what a crash or a killed process loses to one tick.
     _queueSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -560,6 +560,15 @@ class PlayerProvider extends ChangeNotifier
       }
     });
     return reasons;
+  }
+
+  late final Future<void> _restored;
+
+  /// Adopts another device's queue once at start-up, after this device's own saved queue is restored (the
+  /// restore would otherwise overwrite it): a fresh start shows where the other device is.
+  Future<void> adoptRemoteQueueAtStart() async {
+    await _restored;
+    await adoptRemoteQueue();
   }
 
   /// Adopts the play queue another device left on the server, so pressing play here continues where

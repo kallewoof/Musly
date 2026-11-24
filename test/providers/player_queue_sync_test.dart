@@ -409,4 +409,37 @@ void main() {
 
     expect(server.saves, isEmpty);
   });
+
+  // RD: a fresh start restores this device's saved queue and leaves it at that, so the desktop shows the song it
+  // played last, not the one the phone is on; or the restore finishes after the adoption and overwrites it.
+  test('a fresh start shows the queue another device left', () async {
+    server.saveFromOtherDevice('Musly-ios-other', ['a', 'b', 'c'], 1, 61000);
+    SharedPreferences.setMockInitialValues({
+      'persistent_queue':
+          jsonEncode([song('x0').toJson(), song('x1').toJson()]),
+      'persistent_queue_index': 0,
+      'persistent_queue_song_id': 'x0',
+      'persistent_queue_position_ms': 5000,
+    });
+    await StorageService().init();
+    final service = SubsonicService();
+    await service.configure(ServerConfig(
+        serverUrl: 'http://127.0.0.1:${server.port}',
+        username: 'u',
+        password: 'p'));
+    // Called at once, as the start-up adopter can be: the saved queue is still being restored.
+    player = PlayerProvider(
+        service,
+        StorageService(),
+        FakeCastService(),
+        UpnpService(),
+        MuslyAudioHandler(),
+        JukeboxService(),
+        TranscodingService());
+    await player.adoptRemoteQueueAtStart();
+    await settle();
+
+    expect(player.currentSong?.id, 'b');
+    expect(player.position, const Duration(seconds: 61));
+  });
 }
