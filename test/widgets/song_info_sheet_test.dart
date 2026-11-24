@@ -143,6 +143,18 @@ void main() {
     expect(find.text('played 3× (all devices)'), findsOneWidget);
   });
 
+  // RD: the sheet's text cannot be selected, so a song's title cannot be copied to search for it.
+  testWidgets('the title and the numbers can be selected', (tester) async {
+    server.fresh = current;
+    await tester.pumpWidget(app(SongInfoSheet(song: listed)));
+    await tester.pumpAndSettle();
+
+    for (final text in [find.text('Song 1'), find.text('3')]) {
+      expect(find.ancestor(of: text, matching: find.byType(SelectionArea)),
+          findsOneWidget);
+    }
+  });
+
   // RD: a failed load is swallowed, so out-of-date counts are shown as if current; or the sheet stays empty.
   testWidgets(
       'says when the server cannot be reached, showing the counts it has',

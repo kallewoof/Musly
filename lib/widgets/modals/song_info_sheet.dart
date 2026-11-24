@@ -93,90 +93,94 @@ class _SongInfoSheetState extends State<SongInfoSheet> {
           ]),
         );
 
+    // Selectable, to copy a title or an artist (for a search) or a number.
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(_song.title,
-                style: theme.textTheme.titleLarge,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-            if (_song.artist case final artist?)
-              Text(artist, style: TextStyle(color: muted)),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: LinearProgressIndicator(),
-              ),
-            if (_offline)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(l10n.songInfoOffline,
-                    style: TextStyle(color: theme.colorScheme.error)),
-              ),
-            if (!_song.isLocal) ...[
-              heading(l10n.songInfoListening),
-              row('plays', l10n.songInfoPlays, '${_song.playCount ?? 0}'),
-              row('last-played', l10n.songInfoLastPlayed, date(_song.played)),
-              row('finished', l10n.songInfoFinished,
-                  '${_song.completeCount ?? 0}'),
-              row('skipped', l10n.songInfoSkipped, '${_song.skipCount ?? 0}'),
-              row('favourite', l10n.songInfoFavourite,
-                  _song.starred == true ? l10n.songInfoYes : l10n.songInfoNo),
+      child: SelectionArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(_song.title,
+                  style: theme.textTheme.titleLarge,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+              if (_song.artist case final artist?)
+                Text(artist, style: TextStyle(color: muted)),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: LinearProgressIndicator(),
+                ),
+              if (_offline)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(l10n.songInfoOffline,
+                      style: TextStyle(color: theme.colorScheme.error)),
+                ),
+              if (!_song.isLocal) ...[
+                heading(l10n.songInfoListening),
+                row('plays', l10n.songInfoPlays, '${_song.playCount ?? 0}'),
+                row('last-played', l10n.songInfoLastPlayed, date(_song.played)),
+                row('finished', l10n.songInfoFinished,
+                    '${_song.completeCount ?? 0}'),
+                row('skipped', l10n.songInfoSkipped, '${_song.skipCount ?? 0}'),
+                row('favourite', l10n.songInfoFavourite,
+                    _song.starred == true ? l10n.songInfoYes : l10n.songInfoNo),
+                row(
+                    'rating',
+                    l10n.songInfoRating,
+                    (_song.userRating ?? 0) > 0
+                        ? '${_song.userRating}/5'
+                        : l10n.songInfoNoRating),
+                row('added', l10n.songInfoAdded, date(_song.created)),
+              ],
+              heading(l10n.songInfoThisDevice),
+              row('device-finished', l10n.songInfoFinished,
+                  '${device.finished}'),
+              row('device-skipped', l10n.songInfoSkipped, '${device.skipped}'),
               row(
-                  'rating',
-                  l10n.songInfoRating,
-                  (_song.userRating ?? 0) > 0
-                      ? '${_song.userRating}/5'
-                      : l10n.songInfoNoRating),
-              row('added', l10n.songInfoAdded, date(_song.created)),
+                  'last-heard',
+                  l10n.songInfoLastHeardHere,
+                  device.lastHeard == null
+                      ? l10n.songInfoNotThisWeek
+                      : date(device.lastHeard)),
+              if (reason != null) ...[
+                heading(l10n.songInfoWhy),
+                Column(
+                  key: const ValueKey('song-info-why'),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final line in pickReasonLines(reason, l10n))
+                      Text(line,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: muted,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ])),
+                  ],
+                ),
+              ],
+              heading(l10n.songInfoFile),
+              row(
+                  'format',
+                  l10n.songInfoFormat,
+                  [
+                    if (_song.suffix case final s?) s.toUpperCase(),
+                    if (_song.bitRate case final b?) '$b kbps',
+                  ].join(', ')),
+              row('length', l10n.songInfoLength, length(_song.duration)),
+              if (_song.size case final size?)
+                row('size', l10n.songInfoSize,
+                    '${(size / (1024 * 1024)).toStringAsFixed(1)} MB'),
+              if (_song.year case final year?)
+                row('year', l10n.songInfoYear, '$year'),
+              if (_song.genre case final genre?)
+                row('genre', l10n.songInfoGenre, genre),
             ],
-            heading(l10n.songInfoThisDevice),
-            row('device-finished', l10n.songInfoFinished, '${device.finished}'),
-            row('device-skipped', l10n.songInfoSkipped, '${device.skipped}'),
-            row(
-                'last-heard',
-                l10n.songInfoLastHeardHere,
-                device.lastHeard == null
-                    ? l10n.songInfoNotThisWeek
-                    : date(device.lastHeard)),
-            if (reason != null) ...[
-              heading(l10n.songInfoWhy),
-              Column(
-                key: const ValueKey('song-info-why'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final line in pickReasonLines(reason, l10n))
-                    Text(line,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: muted,
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ])),
-                ],
-              ),
-            ],
-            heading(l10n.songInfoFile),
-            row(
-                'format',
-                l10n.songInfoFormat,
-                [
-                  if (_song.suffix case final s?) s.toUpperCase(),
-                  if (_song.bitRate case final b?) '$b kbps',
-                ].join(', ')),
-            row('length', l10n.songInfoLength, length(_song.duration)),
-            if (_song.size case final size?)
-              row('size', l10n.songInfoSize,
-                  '${(size / (1024 * 1024)).toStringAsFixed(1)} MB'),
-            if (_song.year case final year?)
-              row('year', l10n.songInfoYear, '$year'),
-            if (_song.genre case final genre?)
-              row('genre', l10n.songInfoGenre, genre),
-          ],
+          ),
         ),
       ),
     );
