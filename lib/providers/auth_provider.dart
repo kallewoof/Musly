@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -23,6 +24,11 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   ServerConfig? _config;
   bool _hasOfflineContent = false;
+  Timer? _savedConfigRetry;
+
+  /// How long to wait before reading a saved login the keychain could not give yet.
+  @visibleForTesting
+  static Duration lockedRetry = const Duration(seconds: 3);
 
   AuthProvider(this._subsonicService, this._storageService) {
     _loadSavedConfig();
@@ -35,8 +41,23 @@ class AuthProvider extends ChangeNotifier {
   bool get hasOfflineContent => _hasOfflineContent;
   bool get isLocalOnlyMode => _config?.serverType == 'local';
 
+  @override
+  void dispose() {
+    _savedConfigRetry?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadSavedConfig() async {
-    final config = await _storageService.getServerConfig();
+    final ServerConfig? config;
+    try {
+      config = await _storageService.getServerConfig();
+    } on SecretsUnavailableException catch (e) {
+      // The login is saved but locked away until the phone is unlocked: still signed in, so the app waits on
+      // its loading screen rather than asking for the password.
+      debugPrint('Saved login not readable yet, retrying: $e');
+      _savedConfigRetry = Timer(lockedRetry, _loadSavedConfig);
+      return;
+    }
     if (config != null && config.isValid) {
       _config = config;
 

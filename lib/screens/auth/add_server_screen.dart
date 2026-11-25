@@ -10,6 +10,7 @@ import 'package:musly/providers/library_provider.dart';
 import 'package:musly/services/local_music_service.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/l10n/app_localizations.dart';
+import 'package:musly/utils/server_url.dart';
 import 'package:musly/services/tv_detection_service.dart';
 
 class AddServerScreen extends StatefulWidget {
@@ -195,10 +196,8 @@ class _AddServerScreenState extends State<AddServerScreen> {
     final libraryProvider =
         Provider.of<LibraryProvider>(context, listen: false);
 
-    var rawUrl = _urlController.text.trim();
-    if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-      rawUrl = 'https://$rawUrl';
-    }
+    final rawUrl = withScheme(_urlController.text, lan: false);
+    final lanUrl = withScheme(_lanUrlController.text, lan: true);
 
     final user = _userController.text.trim();
     final pass = _passController.text;
@@ -217,9 +216,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
         password: pass,
         serverFamily: _selectedFamily,
         profileName: profileName.isNotEmpty ? profileName : null,
-        lanUrl: _lanUrlController.text.trim().isNotEmpty
-            ? _lanUrlController.text.trim()
-            : null,
+        lanUrl: lanUrl.isNotEmpty ? lanUrl : null,
         allowSelfSignedCertificates: _allowSelfSigned,
         useLegacyAuth: _useLegacyAuth,
         customCertificatePath: _customCertPath,

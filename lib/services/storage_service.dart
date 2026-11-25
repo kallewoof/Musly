@@ -9,13 +9,44 @@ import 'package:uuid/uuid.dart';
 import 'smart_shuffle.dart';
 import '../models/server_config.dart';
 
+/// A saved secret exists but cannot be read now: the keychain is locked (the phone has not been unlocked since
+/// it started). Not the same as no secret: the user is still signed in.
+class SecretsUnavailableException implements Exception {
+  SecretsUnavailableException(this.key, this.cause);
+
+  final String key;
+  final Object cause;
+
+  @override
+  String toString() => 'Secret $key cannot be read now: $cause';
+}
+
 class StorageService {
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;
   StorageService._internal();
 
   SharedPreferences? _prefsInstance;
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  /// Secrets are readable from the phone's first unlock after it starts, so a launch while it is locked (a
+  /// play button on the lock screen) can still sign in. The keychain's default makes them readable only while
+  /// the phone is unlocked, and a password that cannot be read looked like no password: a sign-out.
+  @visibleForTesting
+  FlutterSecureStorage secureStorage = const FlutterSecureStorage(
+      iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock));
+
+  /// The secrets as kept before, readable only while unlocked, until [_moveSecretsToFirstUnlock] has moved
+  /// them. The keychain plugin finds an item only at the accessibility its query names, so these are read
+  /// with the old setting.
+  @visibleForTesting
+  FlutterSecureStorage unlockedOnlyStorage = const FlutterSecureStorage();
+
+  /// Whether the keychain keeps an accessibility per item (iOS), so secrets kept before have to be moved.
+  @visibleForTesting
+  bool keychainHasAccessibility = !kIsWeb && Platform.isIOS;
+
+  static const String _secretsMovedKey = 'secrets_first_unlock';
+
+  FlutterSecureStorage get _secureStorage => secureStorage;
 
   static const String _serverConfigKey = 'server_config';
   static const String _serverProfilesKey = 'server_profiles';
@@ -83,9 +114,37 @@ class StorageService {
     }
   }
 
-  Future<String?> _safeSecureRead(String key) async {
+  Future<bool> _secretsMoved() async =>
+      !keychainHasAccessibility ||
+      ((await _prefs).getBool(_secretsMovedKey) ?? false);
+
+  /// Moves the secrets kept with the old accessibility to [secureStorage], once. Each is deleted before it is
+  /// written: the keychain refuses a second item under the same key. A locked keychain fails the read, and the
+  /// move is tried again at the next launch.
+  Future<void> _moveSecretsToFirstUnlock() async {
+    if (await _secretsMoved()) return;
+    final Map<String, String> old;
     try {
-      return await _secureStorage.read(key: key);
+      old = await unlockedOnlyStorage.readAll();
+    } catch (e) {
+      debugPrint('Secrets not moved yet, keychain unreadable: $e');
+      return;
+    }
+    for (final MapEntry(:key, :value) in old.entries) {
+      await unlockedOnlyStorage.delete(key: key);
+      await _safeSecureWrite(key, value);
+    }
+    await (await _prefs).setBool(_secretsMovedKey, true);
+  }
+
+  /// [mustRead]: a secret the saved config needs, so a failed read throws [SecretsUnavailableException]
+  /// rather than returning null, which means there is none.
+  Future<String?> _safeSecureRead(String key, {bool mustRead = false}) async {
+    try {
+      return await _secureStorage.read(key: key) ??
+          (await _secretsMoved()
+              ? null
+              : await unlockedOnlyStorage.read(key: key));
     } on PlatformException catch (e) {
       debugPrint('Secure storage read failed for $key: ${e.message}');
       final prefs = await _prefs;
@@ -98,6 +157,7 @@ class StorageService {
         }
         return plain;
       }
+      if (mustRead) throw SecretsUnavailableException(key, e);
       return null;
     } catch (e) {
       debugPrint('Unknown secure storage read error: $e');
@@ -111,6 +171,7 @@ class StorageService {
         }
         return plain;
       }
+      if (mustRead) throw SecretsUnavailableException(key, e);
       return null;
     }
   }
@@ -134,6 +195,7 @@ class StorageService {
   Future<void> _safeSecureDelete(String key) async {
     try {
       await _secureStorage.delete(key: key);
+      if (!await _secretsMoved()) await unlockedOnlyStorage.delete(key: key);
     } on PlatformException catch (e) {
       debugPrint('Secure storage delete failed for $key: ${e.message}');
       final prefs = await _prefs;
@@ -148,6 +210,7 @@ class StorageService {
   Future<void> _safeSecureDeleteAll() async {
     try {
       await _secureStorage.deleteAll();
+      if (!await _secretsMoved()) await unlockedOnlyStorage.deleteAll();
     } on PlatformException catch (_) {}
   }
 
@@ -188,7 +251,9 @@ class StorageService {
     if (configJson != null) {
       final map = json.decode(configJson) as Map<String, dynamic>;
 
-      final securePwd = await _safeSecureRead('server_pwd_active');
+      await _moveSecretsToFirstUnlock();
+      final securePwd =
+          await _safeSecureRead('server_pwd_active', mustRead: true);
       final secureToken = await _safeSecureRead('server_token_active');
       final secureCertPwd = await _safeSecureRead('server_cert_pwd_active');
 

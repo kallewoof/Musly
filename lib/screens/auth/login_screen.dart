@@ -12,6 +12,7 @@ import 'package:musly/services/local_music_service.dart';
 import 'package:musly/services/storage_service.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/utils/screen_helper.dart';
+import 'package:musly/utils/server_url.dart';
 import 'package:musly/services/tv_detection_service.dart';
 import 'package:musly/widgets/navigation/tv_remote_scope.dart';
 
@@ -392,6 +393,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_serverFamily != 'youtube') {
+      _serverController.text = withScheme(_serverController.text, lan: false);
+      _lanUrlController.text = withScheme(_lanUrlController.text, lan: true);
       if (!_formKey.currentState!.validate()) return;
     }
 
