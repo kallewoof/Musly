@@ -39,7 +39,9 @@ class NavigationHelper {
 
   static GlobalKey<NavigatorState> get navigatorKey => appNavigatorKey;
 
-  static Widget? _currentTopWidget;
+  /// The page [push] opened last, and its route. The route says whether the page is still on top: one
+  /// removed without being popped (a server switch rebuilds the screens) must not keep refusing its page.
+  static ({Widget page, Route<dynamic> route})? _pushed;
   static int _lastPushTimestamp = 0;
 
   static bool _isSamePage(Widget a, Widget? b) {
@@ -69,13 +71,13 @@ class NavigationHelper {
 
   static Future<T?> push<T>(BuildContext context, Widget page) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (_isSamePage(page, _currentTopWidget) ||
+    final top = _pushed?.route.isCurrent == true ? _pushed!.page : null;
+    if (_isSamePage(page, top) ||
         (now - _lastPushTimestamp < 350 &&
-            page.runtimeType == _currentTopWidget?.runtimeType)) {
+            page.runtimeType == top?.runtimeType)) {
       return Future.value(null);
     }
 
-    _currentTopWidget = page;
     _lastPushTimestamp = now;
 
     final nav = navigatorKey.currentState;
@@ -87,13 +89,8 @@ class NavigationHelper {
 
     final future =
         nav != null ? nav.push<T>(route) : Navigator.of(context).push<T>(route);
-
-    return future.then((res) {
-      if (_currentTopWidget == page) {
-        _currentTopWidget = null;
-      }
-      return res;
-    });
+    _pushed = (page: page, route: route);
+    return future;
   }
 
   static Future<T?> pushRoute<T>(BuildContext context, Route<T> route) {
@@ -105,7 +102,6 @@ class NavigationHelper {
   }
 
   static void pop<T>(BuildContext context, [T? result]) {
-    _currentTopWidget = null;
     final nav = navigatorKey.currentState;
     if (nav != null && nav.canPop()) {
       nav.pop<T>(result);
@@ -118,7 +114,6 @@ class NavigationHelper {
     BuildContext context,
     bool Function(Route<dynamic>) predicate,
   ) {
-    _currentTopWidget = null;
     final nav = navigatorKey.currentState;
     if (nav != null) {
       nav.popUntil(predicate);
