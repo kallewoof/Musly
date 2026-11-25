@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
+import 'auth_log.dart';
 import 'smart_shuffle.dart';
 import '../models/server_config.dart';
 
@@ -27,6 +29,7 @@ class StorageService {
   StorageService._internal();
 
   SharedPreferences? _prefsInstance;
+
   /// Secrets are readable from the phone's first unlock after it starts, so a launch while it is locked (a
   /// play button on the lock screen) can still sign in. The keychain's default makes them readable only while
   /// the phone is unlocked, and a password that cannot be read looked like no password: a sign-out.
@@ -127,7 +130,8 @@ class StorageService {
     try {
       old = await unlockedOnlyStorage.readAll();
     } catch (e) {
-      debugPrint('Secrets not moved yet, keychain unreadable: $e');
+      unawaited(AuthLog.instance
+          .record('keychain secrets not moved yet, unreadable: $e'));
       return;
     }
     for (final MapEntry(:key, :value) in old.entries) {
@@ -135,6 +139,8 @@ class StorageService {
       await _safeSecureWrite(key, value);
     }
     await (await _prefs).setBool(_secretsMovedKey, true);
+    unawaited(AuthLog.instance
+        .record('keychain secrets moved to first-unlock: ${old.length}'));
   }
 
   /// [mustRead]: a secret the saved config needs, so a failed read throws [SecretsUnavailableException]

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../models/server_config.dart';
+import '../services/auth_log.dart';
 import '../services/services.dart';
 
 enum AuthState {
@@ -54,12 +55,14 @@ class AuthProvider extends ChangeNotifier {
     } on SecretsUnavailableException catch (e) {
       // The login is saved but locked away until the phone is unlocked: still signed in, so the app waits on
       // its loading screen rather than asking for the password.
-      debugPrint('Saved login not readable yet, retrying: $e');
+      unawaited(AuthLog.instance
+          .record('saved login not readable yet, retrying: ${e.cause}'));
       _savedConfigRetry = Timer(lockedRetry, _loadSavedConfig);
       return;
     }
     if (config != null && config.isValid) {
       _config = config;
+      unawaited(AuthLog.instance.record('saved login read'));
 
       if (config.serverType == 'local') {
         OfflineService().setOfflineMode(true);
@@ -71,6 +74,13 @@ class AuthProvider extends ChangeNotifier {
       await _subsonicService.configure(config);
       await _verifyConnection();
     } else {
+      unawaited(AuthLog.instance.record(config == null
+          ? 'login screen: no saved login'
+          : 'login screen: saved login incomplete, missing ${[
+              if (config.serverUrl.isEmpty) 'server',
+              if (config.username.isEmpty) 'username',
+              if (config.password.isEmpty) 'password',
+            ].join(', ')}'));
       _state = AuthState.unauthenticated;
       notifyListeners();
     }
@@ -120,6 +130,8 @@ class AuthProvider extends ChangeNotifier {
       final offlineService = OfflineService();
       await offlineService.initialize();
       _hasOfflineContent = offlineService.getDownloadedCount() > 0;
+      unawaited(AuthLog.instance
+          .record('server unreachable: ${pingResult?.error ?? 'no answer'}'));
       _state = AuthState.serverUnreachable;
     }
     notifyListeners();
@@ -138,6 +150,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    unawaited(AuthLog.instance.record('login screen: disconnect'));
     _config = null;
     _state = AuthState.unauthenticated;
     await _storageService.clearAll();
@@ -229,6 +242,7 @@ class AuthProvider extends ChangeNotifier {
         await _storageService.saveLastSelectedFamily(serverFamily);
         _state = AuthState.authenticated;
         notifyListeners();
+        unawaited(AuthLog.instance.record('signed in from the login screen'));
 
         try {
           await _storageService.saveProfile(updatedConfig);
@@ -248,6 +262,8 @@ class AuthProvider extends ChangeNotifier {
       } else {
         _error =
             _formatError(pingResult.error ?? 'Failed to connect to server');
+        unawaited(
+            AuthLog.instance.record('sign-in refused: ${pingResult.error}'));
         _state = AuthState.error;
         notifyListeners();
         return false;
@@ -319,6 +335,7 @@ class AuthProvider extends ChangeNotifier {
       await _storageService.saveServerConfig(_config!);
       _state = AuthState.offlineMode;
     } else {
+      unawaited(AuthLog.instance.record('login screen: left local-only mode'));
       _config = null;
       _state = AuthState.unauthenticated;
       await _storageService.clearAll();
@@ -402,6 +419,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    unawaited(AuthLog.instance.record('login screen: log out'));
     final offlineService = OfflineService();
     if (offlineService.isBackgroundDownloadActive) {
       offlineService.cancelBackgroundDownload();
