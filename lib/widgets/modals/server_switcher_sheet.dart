@@ -32,30 +32,13 @@ class ServerSwitcherSheet extends StatefulWidget {
 class _ServerSwitcherSheetState extends State<ServerSwitcherSheet> {
   String? _switchingServerKey;
 
-  bool _isSameServer(ServerConfig a, ServerConfig? b) {
-    if (b == null) return false;
-    if (a.isYoutube && b.isYoutube) return true;
-    if (a.name != null &&
-        b.name != null &&
-        a.name!.isNotEmpty &&
-        b.name!.isNotEmpty) {
-      return a.name == b.name &&
-          a.serverFamily == b.serverFamily &&
-          a.serverUrl == b.serverUrl &&
-          a.username == b.username;
-    }
-    return a.serverFamily == b.serverFamily &&
-        a.serverUrl == b.serverUrl &&
-        a.username == b.username;
-  }
-
   Future<void> _switchToProfile(ServerConfig profile) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final libraryProvider =
         Provider.of<LibraryProvider>(context, listen: false);
 
-    if (_isSameServer(profile, authProvider.config)) {
+    if (profile.isSameProfile(authProvider.config)) {
       Navigator.of(context).pop();
       return;
     }
@@ -202,7 +185,7 @@ class _ServerSwitcherSheetState extends State<ServerSwitcherSheet> {
         var profiles = snapshot.data ?? [];
 
         if (currentConfig != null &&
-            !profiles.any((p) => _isSameServer(p, currentConfig))) {
+            !profiles.any((p) => p.isSameProfile(currentConfig))) {
           profiles = [currentConfig, ...profiles];
         }
 
@@ -296,7 +279,7 @@ class _ServerSwitcherSheetState extends State<ServerSwitcherSheet> {
                         ),
                       ),
                     ...profiles.map((profile) {
-                      final isActive = _isSameServer(profile, currentConfig);
+                      final isActive = profile.isSameProfile(currentConfig);
                       final isSwitchingThis = _switchingServerKey ==
                               '${profile.serverFamily}_${profile.serverUrl}_${profile.username}' ||
                           (profile.isYoutube &&

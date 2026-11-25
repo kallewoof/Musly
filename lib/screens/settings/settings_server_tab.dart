@@ -328,10 +328,7 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
       builder: (context, snapshot) {
         var profiles = snapshot.data ?? [];
         if (currentConfig != null &&
-            !profiles.any((p) =>
-                (p.isYoutube && currentConfig.isYoutube) ||
-                (p.serverUrl == currentConfig.serverUrl &&
-                    p.username == currentConfig.username))) {
+            !profiles.any((p) => p.isSameProfile(currentConfig))) {
           profiles = [currentConfig, ...profiles];
         }
 
@@ -395,10 +392,7 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
                   child: Column(
                     children: [
                     ...profiles.map((profile) {
-                      final isActive = (profile.isYoutube &&
-                              currentConfig?.isYoutube == true) ||
-                          (currentConfig?.serverUrl == profile.serverUrl &&
-                              currentConfig?.username == profile.username);
+                      final isActive = profile.isSameProfile(currentConfig);
 
                       final (
                         IconData pIcon,

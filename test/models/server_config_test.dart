@@ -100,4 +100,40 @@ void main() {
       expect(restored.useLegacyAuth, config.useLegacyAuth);
     });
   });
+
+  group('isSameProfile', () {
+    ServerConfig profile(
+            {String? name, String url = 'https://music.example.com'}) =>
+        ServerConfig(serverUrl: url, username: 'u', password: 'p', name: name);
+
+    // RD: the name counts only when both profiles have one, so a named profile and an unnamed one for the same
+    // server and user are taken for one: switching between them does nothing, and settings marks both active.
+    test('two profiles for one server and user differ by name', () {
+      expect(profile(name: 'home').isSameProfile(profile()), isFalse);
+      expect(profile().isSameProfile(profile(name: 'home')), isFalse);
+      expect(
+          profile(name: 'home').isSameProfile(profile(name: 'away')), isFalse);
+      expect(
+          profile(name: 'home').isSameProfile(profile(name: 'home')), isTrue);
+    });
+
+    // RD: a missing name and an empty one compare unequal, so a profile saved with '' is never found again and
+    // each save adds a duplicate.
+    test('a missing name is an empty one', () {
+      expect(profile(name: '').isSameProfile(profile()), isTrue);
+    });
+
+    // RD: the server or user is left out of the comparison, so profiles for two servers with the same name, or
+    // two users of one server, are taken for one.
+    test('another server or user is another profile', () {
+      expect(profile().isSameProfile(profile(url: 'https://other.example.com')),
+          isFalse);
+      expect(
+          profile().isSameProfile(ServerConfig(
+              serverUrl: 'https://music.example.com',
+              username: 'v',
+              password: 'p')),
+          isFalse);
+    });
+  });
 }

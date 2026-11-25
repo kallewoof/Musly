@@ -57,4 +57,20 @@ void main() {
     expect(
         (await StorageService().getServerConfig())!.normalizedLanUrl, isNull);
   });
+
+  // RD: renaming a profile matches the active login by server and user alone, so renaming another profile for
+  // the same server renames the login in use too, and the two can no longer be told apart.
+  test('renaming another profile for the same server leaves the active one',
+      () async {
+    final home = (await StorageService().getServerConfig())!
+        .copyWith(name: 'home', lanUrl: url(lan));
+    await auth.saveProfile(home);
+
+    await auth.renameProfile(home, 'cottage');
+
+    expect(auth.config?.name, isNull);
+    expect((await StorageService().getServerConfig())!.name, isNull);
+    expect((await StorageService().getSavedProfiles()).map((p) => p.name),
+        containsAll([null, 'cottage']));
+  });
 }

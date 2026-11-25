@@ -168,6 +168,18 @@ class ServerConfig {
     return url;
   }
 
+  /// Whether [other] is this saved profile: the fields a profile is stored under. Profiles for the same server
+  /// and user can differ by name alone (each with its own LAN address), so the name counts, a missing one
+  /// equal to an empty one.
+  bool isSameProfile(ServerConfig? other) {
+    if (other == null) return false;
+    if (isYoutube && other.isYoutube) return true;
+    return serverFamily == other.serverFamily &&
+        serverUrl == other.serverUrl &&
+        username == other.username &&
+        (name ?? '') == (other.name ?? '');
+  }
+
   bool get isValid {
     if (isYoutube || isLocal) {
       return serverUrl.isNotEmpty;

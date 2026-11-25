@@ -364,9 +364,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> renameProfile(ServerConfig profile, String newName) async {
     final updated = profile.copyWith(name: newName);
     await _storageService.saveProfile(updated);
-    if (_config?.serverUrl == profile.serverUrl &&
-        _config?.username == profile.username &&
-        _config?.serverFamily == profile.serverFamily) {
+    if (profile.isSameProfile(_config)) {
       _config = updated;
       await _storageService.saveServerConfig(updated);
     }

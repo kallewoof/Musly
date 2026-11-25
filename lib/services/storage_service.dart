@@ -400,14 +400,7 @@ class StorageService {
       return;
     }
     final profiles = await getSavedProfiles();
-    final idx = profiles.indexWhere(
-      (p) =>
-          (config.isYoutube && p.isYoutube) ||
-          (p.serverFamily == config.serverFamily &&
-              p.serverUrl == config.serverUrl &&
-              p.username == config.username &&
-              p.name == config.name),
-    );
+    final idx = profiles.indexWhere(config.isSameProfile);
 
     final pKey = _profileKey(config);
     if (config.password.isNotEmpty) {
@@ -448,14 +441,7 @@ class StorageService {
 
   Future<void> deleteProfile(ServerConfig config) async {
     final profiles = await getSavedProfiles();
-    final idx = profiles.indexWhere(
-      (p) =>
-          (config.isYoutube && p.isYoutube) ||
-          (p.serverFamily == config.serverFamily &&
-              p.serverUrl == config.serverUrl &&
-              p.username == config.username &&
-              p.name == config.name),
-    );
+    final idx = profiles.indexWhere(config.isSameProfile);
 
     if (idx >= 0) {
       final removed = profiles.removeAt(idx);
