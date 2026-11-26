@@ -4233,5 +4233,77 @@
   "songInfoOffline": "Couldn't reach the server; the counts shown may be out of date.",
   "@songInfoOffline": {
     "description": "Song info: the fresh counts could not be loaded"
+  },
+  "tasteMap": "Taste map",
+  "@tasteMap": {
+    "description": "Title of the screen that plots every song by when it was last played and how much Smart Shuffle believes the user likes it"
+  },
+  "tasteMapHint": "Each block is a song. Higher: liked more, lower: liked less. Left to right: last played longest ago to now.",
+  "@tasteMapHint": {
+    "description": "Taste map: how to read the chart"
+  },
+  "tasteMapNeverPlayed": "Never played",
+  "@tasteMapNeverPlayed": {
+    "description": "Taste map: the lane of songs never played"
+  },
+  "tasteMapLike": "Like",
+  "@tasteMapLike": {
+    "description": "Taste map: the top of the liking axis"
+  },
+  "tasteMapDislike": "Dislike",
+  "@tasteMapDislike": {
+    "description": "Taste map: the bottom of the liking axis"
+  },
+  "tasteMapNeutral": "Neutral",
+  "@tasteMapNeutral": {
+    "description": "Taste map: the middle of the liking axis"
+  },
+  "tasteMapNow": "Now",
+  "@tasteMapNow": {
+    "description": "Taste map: the right end of the time axis"
+  },
+  "tasteMapPlaysLegend": "Plays",
+  "@tasteMapPlaysLegend": {
+    "description": "Taste map: label of the legend for the colour, which shows the play count"
+  },
+  "tasteMapTapHint": "Tap a block to see its song.",
+  "@tasteMapTapHint": {
+    "description": "Taste map: shown below the chart until a song is selected"
+  },
+  "tasteMapLiking": "Liking {percent}%",
+  "@tasteMapLiking": {
+    "description": "Taste map: how much Smart Shuffle believes the user likes the song; 50% is neutral",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "tasteMapShowList": "Show as list",
+  "@tasteMapShowList": {
+    "description": "Taste map: switch to the list of songs ordered by liking"
+  },
+  "tasteMapShowChart": "Show as chart",
+  "@tasteMapShowChart": {
+    "description": "Taste map: switch back to the chart"
+  },
+  "tasteMapEmpty": "The library has no songs yet.",
+  "@tasteMapEmpty": {
+    "description": "Taste map: shown when the library is empty"
+  },
+  "tasteMapBand": "{count} never-played songs at liking {from}-{to}%",
+  "@tasteMapBand": {
+    "description": "Taste map: a band of the never-played lane was tapped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
   }
 }

@@ -6255,6 +6255,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t reach the server; the counts shown may be out of date.'**
   String get songInfoOffline;
+
+  /// Title of the screen that plots every song by when it was last played and how much Smart Shuffle believes the user likes it
+  ///
+  /// In en, this message translates to:
+  /// **'Taste map'**
+  String get tasteMap;
+
+  /// Taste map: how to read the chart
+  ///
+  /// In en, this message translates to:
+  /// **'Each block is a song. Higher: liked more, lower: liked less. Left to right: last played longest ago to now.'**
+  String get tasteMapHint;
+
+  /// Taste map: the lane of songs never played
+  ///
+  /// In en, this message translates to:
+  /// **'Never played'**
+  String get tasteMapNeverPlayed;
+
+  /// Taste map: the top of the liking axis
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get tasteMapLike;
+
+  /// Taste map: the bottom of the liking axis
+  ///
+  /// In en, this message translates to:
+  /// **'Dislike'**
+  String get tasteMapDislike;
+
+  /// Taste map: the middle of the liking axis
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral'**
+  String get tasteMapNeutral;
+
+  /// Taste map: the right end of the time axis
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get tasteMapNow;
+
+  /// Taste map: label of the legend for the colour, which shows the play count
+  ///
+  /// In en, this message translates to:
+  /// **'Plays'**
+  String get tasteMapPlaysLegend;
+
+  /// Taste map: shown below the chart until a song is selected
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a block to see its song.'**
+  String get tasteMapTapHint;
+
+  /// Taste map: how much Smart Shuffle believes the user likes the song; 50% is neutral
+  ///
+  /// In en, this message translates to:
+  /// **'Liking {percent}%'**
+  String tasteMapLiking(int percent);
+
+  /// Taste map: switch to the list of songs ordered by liking
+  ///
+  /// In en, this message translates to:
+  /// **'Show as list'**
+  String get tasteMapShowList;
+
+  /// Taste map: switch back to the chart
+  ///
+  /// In en, this message translates to:
+  /// **'Show as chart'**
+  String get tasteMapShowChart;
+
+  /// Taste map: shown when the library is empty
+  ///
+  /// In en, this message translates to:
+  /// **'The library has no songs yet.'**
+  String get tasteMapEmpty;
+
+  /// Taste map: a band of the never-played lane was tapped
+  ///
+  /// In en, this message translates to:
+  /// **'{count} never-played songs at liking {from}-{to}%'**
+  String tasteMapBand(int count, int from, int to);
 }
 
 class _AppLocalizationsDelegate

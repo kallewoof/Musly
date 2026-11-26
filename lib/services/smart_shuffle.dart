@@ -8,6 +8,25 @@ import '../models/song.dart';
 /// How a user's listens to a song ended: heard through, or skipped early.
 typedef ListenOutcomes = ({int completes, int skips});
 
+/// What the listens say about one song: a Beta distribution over its chance of a good listen.
+class SongBelief {
+  const SongBelief(
+      {required this.alpha,
+      required this.beta,
+      required this.outcomes,
+      required this.artistMean});
+
+  final double alpha;
+  final double beta;
+  final ListenOutcomes outcomes;
+
+  /// The artist's record from their other songs, smoothed; null when the song has no artist.
+  final double? artistMean;
+
+  /// The distribution's mean: how much the user is believed to like the song, from 0 to 1, with 0.5 neutral.
+  double get typical => alpha / (alpha + beta);
+}
+
 /// Picks songs for Smart Shuffle: an endless queue of what the user is likely to enjoy, mixed with music they
 /// have not heard yet, by Thompson sampling.
 ///
@@ -51,19 +70,13 @@ class SmartShuffle {
 
   /// Up to [count] songs from [candidates], never one in [exclude]. [recentArtists] are the artists just
   /// queued, newest last, so the gap holds across refills. Each pick's [ShufflePick] goes into [reasons].
-  List<Song> pick(
-    List<Song> candidates,
-    int count, {
-    required Set<String> exclude,
-    required ListenOutcomes Function(Song) outcomes,
-    List<String?> recentArtists = const [],
-    Map<String, PickReason>? reasons,
-    double taste = neutralTaste,
-  }) {
+  /// Each of [songs]' belief, by id. An artist's record comes from their songs among [songs].
+  static Map<String, SongBelief> beliefs(
+      List<Song> songs, ListenOutcomes Function(Song) outcomes) {
     final counts = <String, ListenOutcomes>{};
     final evidence = <String, ({double good, double bad})>{};
     final byArtist = <String, ({double good, double bad})>{};
-    for (final song in candidates) {
+    for (final song in songs) {
       final o = outcomes(song);
       counts[song.id] = o;
       final e = (
@@ -77,21 +90,43 @@ class SmartShuffle {
         byArtist[artist] = (good: a.good + e.good, bad: a.bad + e.bad);
       }
     }
+    return {
+      for (final song in songs)
+        song.id: () {
+          final e = evidence[song.id]!;
+          final a =
+              song.knownArtist == null ? null : byArtist[song.knownArtist];
+          // The artist's record without this song, smoothed so an artist with one listen is not certain.
+          final mean = a == null
+              ? 0.5
+              : (a.good - e.good + 1) / (a.good - e.good + a.bad - e.bad + 2);
+          return SongBelief(
+            alpha: e.good + priorStrength * mean,
+            beta: e.bad + priorStrength * (1 - mean),
+            outcomes: counts[song.id]!,
+            artistMean: a == null ? null : mean,
+          );
+        }(),
+    };
+  }
 
+  List<Song> pick(
+    List<Song> candidates,
+    int count, {
+    required Set<String> exclude,
+    required ListenOutcomes Function(Song) outcomes,
+    List<String?> recentArtists = const [],
+    Map<String, PickReason>? reasons,
+    double taste = neutralTaste,
+  }) {
+    final believed = beliefs(candidates, outcomes);
     final drawn = <(Song, ShufflePick)>[];
     for (final song in candidates) {
       if (exclude.contains(song.id)) continue;
-      final e = evidence[song.id]!;
-      final a = song.knownArtist == null ? null : byArtist[song.knownArtist];
-      // The artist's record without this song, smoothed so an artist with one listen is not certain.
-      final mean = a == null
-          ? 0.5
-          : (a.good - e.good + 1) / (a.good - e.good + a.bad - e.bad + 2);
-      final alpha = e.good + priorStrength * mean;
-      final beta = e.bad + priorStrength * (1 - mean);
-      final o = counts[song.id]!;
-      final draw = _beta(alpha, beta);
-      final typical = alpha / (alpha + beta);
+      final b = believed[song.id]!;
+      final o = b.outcomes;
+      final draw = _beta(b.alpha, b.beta);
+      final typical = b.typical;
       final listens = max(song.playCount ?? 0, o.completes + o.skips);
       drawn.add((
         song,
@@ -100,7 +135,7 @@ class SmartShuffle {
           completes: o.completes,
           skips: o.skips,
           starred: song.starred == true,
-          artistMean: a == null ? null : mean,
+          artistMean: b.artistMean,
           draw: draw,
           typical: typical,
           taste: taste,

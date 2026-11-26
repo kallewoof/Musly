@@ -9,8 +9,10 @@ import 'package:musly/providers/auth_provider.dart';
 import 'package:musly/providers/library_provider.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/screens/main/library_screen.dart';
+import 'package:musly/screens/media/taste_map_screen.dart';
 import 'package:musly/services/audio_handler.dart';
 import 'package:musly/services/jukebox_service.dart';
+import 'package:musly/services/recommendation_service.dart';
 import 'package:musly/services/storage_service.dart';
 import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/services/transcoding_service.dart';
@@ -84,7 +86,42 @@ void main() {
       authProvider = AuthProvider(subsonicService, storageService);
     });
 
-    testWidgets('Renders filter chips and triggers ensureLibraryLoaded when albums/songs empty',
+    // RD: the taste map has no way in, or its button opens another screen.
+    testWidgets('the top bar opens the taste map', (tester) async {
+      final libraryProvider = TestLibraryProvider(
+        subsonicService: subsonicService,
+        audioHandler: MuslyAudioHandler(),
+        testSongs: [Song(id: 's1', title: 'Song 1')],
+      );
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<SubsonicService>.value(value: subsonicService),
+            Provider<StorageService>.value(value: storageService),
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            ChangeNotifierProvider<PlayerProvider>.value(value: playerProvider),
+            ChangeNotifierProvider<LibraryProvider>.value(
+                value: libraryProvider),
+            ChangeNotifierProvider<RecommendationService>.value(
+                value: RecommendationService()),
+          ],
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: LibraryScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('library-taste-map')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TasteMapScreen), findsOneWidget);
+    });
+
+    testWidgets(
+        'Renders filter chips and triggers ensureLibraryLoaded when albums/songs empty',
         (tester) async {
       final libraryProvider = TestLibraryProvider(
         subsonicService: subsonicService,
@@ -100,7 +137,8 @@ void main() {
             Provider<StorageService>.value(value: storageService),
             ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
             ChangeNotifierProvider<PlayerProvider>.value(value: playerProvider),
-            ChangeNotifierProvider<LibraryProvider>.value(value: libraryProvider),
+            ChangeNotifierProvider<LibraryProvider>.value(
+                value: libraryProvider),
           ],
           child: const MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -141,15 +179,24 @@ void main() {
       expect(find.text('No albums found'), findsOneWidget);
     });
 
-    testWidgets('Populates albums and songs when selecting their respective tabs',
+    testWidgets(
+        'Populates albums and songs when selecting their respective tabs',
         (tester) async {
       final testAlbums = [
         Album(id: 'alb_1', name: 'Random Access Memories', artist: 'Daft Punk'),
         Album(id: 'alb_2', name: 'Discovery', artist: 'Daft Punk'),
       ];
       final testSongs = [
-        Song(id: 'song_1', title: 'Get Lucky', artist: 'Daft Punk', album: 'Random Access Memories'),
-        Song(id: 'song_2', title: 'One More Time', artist: 'Daft Punk', album: 'Discovery'),
+        Song(
+            id: 'song_1',
+            title: 'Get Lucky',
+            artist: 'Daft Punk',
+            album: 'Random Access Memories'),
+        Song(
+            id: 'song_2',
+            title: 'One More Time',
+            artist: 'Daft Punk',
+            album: 'Discovery'),
       ];
 
       final libraryProvider = TestLibraryProvider(
@@ -166,7 +213,8 @@ void main() {
             Provider<StorageService>.value(value: storageService),
             ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
             ChangeNotifierProvider<PlayerProvider>.value(value: playerProvider),
-            ChangeNotifierProvider<LibraryProvider>.value(value: libraryProvider),
+            ChangeNotifierProvider<LibraryProvider>.value(
+                value: libraryProvider),
           ],
           child: const MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

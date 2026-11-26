@@ -16,6 +16,7 @@ import 'package:musly/screens/detail/artist_screen.dart';
 import 'package:musly/screens/media/radio_screen.dart';
 import 'package:musly/screens/media/downloads_screen.dart';
 import 'package:musly/screens/media/song_collection_screen.dart';
+import 'package:musly/screens/media/taste_map_screen.dart';
 import 'package:musly/screens/auth/add_server_screen.dart';
 import 'package:musly/l10n/app_localizations.dart';
 import 'package:musly/services/offline_service.dart';
@@ -509,6 +510,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
                 actions: [
+                  IconButton(
+                    key: const ValueKey('library-taste-map'),
+                    icon: Icon(CupertinoIcons.chart_bar_square,
+                        color: isDark ? Colors.white : Colors.black87,
+                        size: 22),
+                    tooltip: AppLocalizations.of(context)!.tasteMap,
+                    onPressed: () =>
+                        NavigationHelper.push(context, const TasteMapScreen()),
+                  ),
                   IconButton(
                     icon: Icon(CupertinoIcons.search,
                         color: isDark ? Colors.white : Colors.black87,

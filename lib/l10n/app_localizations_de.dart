@@ -3428,4 +3428,51 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get songInfoOffline =>
       'Couldn\'t reach the server; the counts shown may be out of date.';
+
+  @override
+  String get tasteMap => 'Taste map';
+
+  @override
+  String get tasteMapHint =>
+      'Each block is a song. Higher: liked more, lower: liked less. Left to right: last played longest ago to now.';
+
+  @override
+  String get tasteMapNeverPlayed => 'Never played';
+
+  @override
+  String get tasteMapLike => 'Like';
+
+  @override
+  String get tasteMapDislike => 'Dislike';
+
+  @override
+  String get tasteMapNeutral => 'Neutral';
+
+  @override
+  String get tasteMapNow => 'Now';
+
+  @override
+  String get tasteMapPlaysLegend => 'Plays';
+
+  @override
+  String get tasteMapTapHint => 'Tap a block to see its song.';
+
+  @override
+  String tasteMapLiking(int percent) {
+    return 'Liking $percent%';
+  }
+
+  @override
+  String get tasteMapShowList => 'Show as list';
+
+  @override
+  String get tasteMapShowChart => 'Show as chart';
+
+  @override
+  String get tasteMapEmpty => 'The library has no songs yet.';
+
+  @override
+  String tasteMapBand(int count, int from, int to) {
+    return '$count never-played songs at liking $from-$to%';
+  }
 }

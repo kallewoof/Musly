@@ -7,7 +7,7 @@ import '../models/models.dart';
 
 class LibraryDatabaseService {
   static const String _dbName = 'musly_library.db';
-  static const int _dbVersion = 4;
+  static const int _dbVersion = 5;
   static const int _batchSize = 1000;
 
   Database? _db;
@@ -54,6 +54,9 @@ class LibraryDatabaseService {
         await db.execute('ALTER TABLE songs ADD COLUMN $column INTEGER');
       }
     }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE songs ADD COLUMN played TEXT');
+    }
   }
 
   Future<void> _createSchema(Database db) async {
@@ -86,7 +89,8 @@ class LibraryDatabaseService {
         userRating INTEGER,
         playCount INTEGER,
         skipCount INTEGER,
-        completeCount INTEGER
+        completeCount INTEGER,
+        played TEXT
       )
     ''');
 
@@ -520,6 +524,7 @@ class LibraryDatabaseService {
       'playCount': song.playCount,
       'skipCount': song.skipCount,
       'completeCount': song.completeCount,
+      'played': song.played?.toIso8601String(),
     };
   }
 
@@ -558,6 +563,9 @@ class LibraryDatabaseService {
       playCount: m['playCount'] as int?,
       skipCount: m['skipCount'] as int?,
       completeCount: m['completeCount'] as int?,
+      played: m['played'] != null
+          ? DateTime.tryParse(m['played'] as String)
+          : null,
     );
   }
 

@@ -27,8 +27,14 @@ void main() {
 
   late Directory dir;
   late LibraryDatabaseService cache;
-  final song =
-      Song(id: 's1', title: 'T', playCount: 7, skipCount: 2, completeCount: 5);
+  final played = DateTime.utc(2026, 11, 20, 7, 17, 28);
+  final song = Song(
+      id: 's1',
+      title: 'T',
+      playCount: 7,
+      skipCount: 2,
+      completeCount: 5,
+      played: played);
 
   setUp(() async {
     dir = Directory.systemTemp.createTempSync('musly_cache_');
@@ -50,8 +56,16 @@ void main() {
         [stored.playCount, stored.skipCount, stored.completeCount], [7, 2, 5]);
   });
 
+  // RD: the cache drops the play date, so the taste map, drawn from the cache, shows every song as never played.
+  test('keeps each song\'s last play date', () async {
+    await cache.insertSongsBatch([song]);
+
+    expect((await cache.getAllSongs()).single.played, played);
+  });
+
   // RD: an existing install's cache never gains the new columns, so saving the library fails and it shows empty.
-  test('upgrades a version 3 cache to hold the counts', () async {
+  test('upgrades a version 3 cache to hold the counts and the play date',
+      () async {
     final old = await databaseFactory.openDatabase(
       p.join(dir.path, 'musly_library.db'),
       options: OpenDatabaseOptions(
@@ -64,5 +78,6 @@ void main() {
 
     expect(
         [stored.playCount, stored.skipCount, stored.completeCount], [7, 2, 5]);
+    expect(stored.played, played);
   });
 }
