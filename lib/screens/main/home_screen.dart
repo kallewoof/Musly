@@ -229,7 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   var personalizedFeed = _cachedPersonalized;
                   var listenAgain = _cachedListenAgain;
                   var topHits = _cachedTopHits;
-                  var recentAlbums = libraryProvider.recentAlbums;
+                  // Songs without an album, grouped per artist, would fill these rows with "[Unknown Album]".
+                  var recentAlbums = libraryProvider.recentAlbums
+                      .where((a) => !a.isUnknown)
+                      .toList();
                   var playlists = libraryProvider.playlists;
                   var artists = libraryProvider.artists;
 

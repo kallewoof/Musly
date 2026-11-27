@@ -1,3 +1,4 @@
+import 'song.dart';
 import 'artist_ref.dart';
 
 class Album {
@@ -67,6 +68,10 @@ class Album {
       if (starred != null) 'starred': starred! ? 'starred' : null,
     };
   }
+
+  /// The songs of an artist that have no album tag, which the server lists as an album of this name. It has no
+  /// cover, and is not an album the user chose to play.
+  bool get isUnknown => name == Song.unknownAlbum;
 
   String get formattedDuration {
     if (duration == null) return '';
