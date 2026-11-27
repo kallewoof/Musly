@@ -213,6 +213,10 @@ class PlayerProvider extends ChangeNotifier
   String? _startStallSongId;
   int _startStallTicks = 0;
   int _startStallReloads = 0;
+  String? _midStallSongId;
+  Duration? _midStallPosition;
+  int _midStallTicks = 0;
+  int _midStallReloads = 0;
 
   final bool _reactivatingSession = false;
 
@@ -287,6 +291,7 @@ class PlayerProvider extends ChangeNotifier
     _stallTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       checkForStallAtEnd();
       checkForStallAtStart();
+      checkForStallMidSong();
     });
 
     WidgetsBinding.instance.addObserver(this);
@@ -508,6 +513,64 @@ class PlayerProvider extends ChangeNotifier
       return;
     }
     debugPrint('[Player] "${song.title}" will not play; moving on');
+    _leavingUnjudged = true;
+    unawaited(skipNext().whenComplete(() {
+      if (_currentSong?.id == song.id) _leavingUnjudged = false;
+    }));
+  }
+
+  /// Checks without progress mid-song before the song is loaded again past the spot, loads before it is left,
+  /// and how far past the spot each load starts.
+  static const _midStallChecks = 15;
+  static const _maxMidReloads = 3;
+  static const _midStallJump = Duration(seconds: 3);
+
+  /// A damaged stretch of a file can stop the app's decoder mid-song, the player still showing it playing with
+  /// the position frozen (mpv on its own plays on past the same damage). After [_midStallChecks] checks (a
+  /// second apart) without progress, longer than a slow network's buffering, the song is loaded again
+  /// [_midStallJump] past where it stopped; after [_maxMidReloads] such loads it is left, with no verdict on a
+  /// song the user did not choose to leave. The first second and the last two are the other checks'.
+  @visibleForTesting
+  void checkForStallMidSong() {
+    final song = _currentSong;
+    if (song?.id != _midStallSongId) {
+      _midStallSongId = song?.id;
+      _midStallTicks = 0;
+      _midStallReloads = 0;
+    }
+    final midSong = _position >= const Duration(seconds: 1) &&
+        (_duration <= Duration.zero ||
+            _duration - _position > const Duration(seconds: 2));
+    if (song == null ||
+        !_isPlaying ||
+        _isRenderingRemotely ||
+        _isPlayingRadio ||
+        _jukeboxService.enabled ||
+        !midSong ||
+        _position != _midStallPosition) {
+      _midStallPosition = _position;
+      _midStallTicks = 0;
+      return;
+    }
+    if (++_midStallTicks < _midStallChecks) return;
+    _midStallTicks = 0;
+    // The stuck decoder may hold the loaded playlist too, so the song is loaded afresh rather than by index.
+    _concatenatingSource = null;
+    if (_midStallReloads++ < _maxMidReloads) {
+      final resumeAt = _position + _midStallJump;
+      debugPrint(
+          '[Player] "${song.title}" stuck at $_position; loading it again from $resumeAt');
+      _position = resumeAt;
+      _midStallPosition = resumeAt;
+      // Stopped without stop(), which resets the position: play() then loads the song from resumeAt.
+      unawaited(_audioPlayer.stop().then((_) {
+        if (_currentSong?.id != song.id) return null;
+        _position = resumeAt;
+        return play(adoptRemote: false);
+      }, onError: (_) {}));
+      return;
+    }
+    debugPrint('[Player] "${song.title}" keeps stopping; moving on');
     _leavingUnjudged = true;
     unawaited(skipNext().whenComplete(() {
       if (_currentSong?.id == song.id) _leavingUnjudged = false;

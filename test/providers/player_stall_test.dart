@@ -238,4 +238,90 @@ void main() {
     expect(timed.debugGaplessSource, isNot(same(stuck)));
     timed.dispose();
   });
+
+  /// Runs [ticks] mid-song checks with the song playing, as the one-second timer would; playing is set again
+  /// before each, since a reload stops the player.
+  Future<void> checkMid(int ticks) async {
+    runZonedGuarded(() {
+      for (var i = 0; i < ticks; i++) {
+        player.debugSetPlaying(true);
+        player.checkForStallMidSong();
+      }
+    }, (_, __) {});
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+
+  // RD: a damaged stretch mid-song stops the decoder for good, the player showing the song playing; or a short
+  // pause (a slow network buffering) is taken for one and the song jumps ahead.
+  test('a song stuck mid-way for 15 s is loaded again just past the spot',
+      () async {
+    final stuck = ConcatenatingAudioSource(children: []);
+    player.debugGaplessSource = stuck;
+    await player.seek(const Duration(seconds: 60));
+
+    // The first check notes where the song is; 15 more without progress make 15 s stuck.
+    await checkMid(15);
+    expect(player.position, const Duration(seconds: 60));
+    expect(player.debugGaplessSource, same(stuck));
+
+    await checkMid(1);
+    expect(player.currentSong?.id, 'a');
+    expect(player.position, const Duration(seconds: 63));
+    expect(player.debugGaplessSource, isNot(same(stuck)));
+  });
+
+  // RD: a song that keeps stopping is reloaded forever and the queue halts on it; or leaving it counts a skip
+  // against a song the user did not choose to leave.
+  test('a song that keeps stopping is left after 3 loads, without a verdict',
+      () async {
+    await player.seek(const Duration(seconds: 60));
+
+    await checkMid(1 + 15 * 3);
+    expect(player.currentSong?.id, 'a');
+    expect(player.position, const Duration(seconds: 69));
+
+    await checkMid(15);
+    expect(player.currentSong?.id, 'b');
+    expect(player.lastLeft?.id, 'a');
+    expect(player.lastLeft?.unjudged, isTrue);
+  });
+
+  // RD: a song the user paused mid-way counts as stuck and is reloaded or left while they are away.
+  test('a song paused mid-way is left alone', () async {
+    await player.seek(const Duration(seconds: 60));
+    runZonedGuarded(() {
+      for (var i = 0; i < 60; i++) {
+        player.checkForStallMidSong();
+      }
+    }, (_, __) {});
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(player.currentSong?.id, 'a');
+    expect(player.position, const Duration(seconds: 60));
+  });
+
+  // RD: the mid-song check exists but the timer does not run it, so outside tests a stuck song stays stuck.
+  test('the mid-song check runs on its own once a second', () async {
+    late PlayerProvider timed;
+    runZonedGuarded(() {
+      timed = PlayerProvider(
+        service,
+        StorageService(),
+        FakeCastService(),
+        UpnpService(),
+        MuslyAudioHandler(),
+        JukeboxService(),
+        TranscodingService(),
+      );
+    }, (_, __) {});
+    timed.queue.addAll([song('a'), song('b')]);
+    await timed.adoptTrackAt(0);
+    await timed.seek(const Duration(seconds: 60));
+    timed.debugSetPlaying(true);
+
+    await Future<void>.delayed(const Duration(milliseconds: 16500));
+
+    expect(timed.position, const Duration(seconds: 63));
+    timed.dispose();
+  }, timeout: const Timeout(Duration(seconds: 40)));
 }
